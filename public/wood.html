@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      body {
+        margin: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        background: #e0c09f; /* Background color for the wood effect */
+      }
+
+      .wood-box {
+        width: 300px;
+        height: 200px;
+        background: linear-gradient(
+          45deg,
+          #8b4513 25%,
+          #d2b48c 50%,
+          #8b4513 75%
+        );
+        background-size: 10px 10px; /* Adjust the size of the wood grain pattern */
+        position: relative;
+      }
+
+      .wood-knot {
+        position: absolute;
+        width: 30px;
+        height: 30px;
+        background-color: #8b4513; /* Color for the wood knots */
+        border-radius: 50%;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wood-box">
+      <div class="wood-knot"></div>
+    </div>
+  </body>
+</html>

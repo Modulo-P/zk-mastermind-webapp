@@ -1,0 +1,163 @@
+import {
+  Box,
+  Button,
+  FormControl,
+  FormLabel,
+  HStack,
+  Input,
+  NumberInput,
+  NumberInputField,
+  Text,
+  Textarea,
+  VStack,
+} from "@chakra-ui/react";
+
+import vkJson from "../../lib/vk.json";
+import ColorRow from "./color-row";
+import { useCallback, useEffect, useState } from "react";
+import Selector from "./selector";
+import { MastermindDatum, colorSchema } from "@/services/mastermind";
+import { CheckIcon, CloseIcon } from "@chakra-ui/icons";
+
+const snarkjs = require("snarkjs");
+
+type Props = {
+  datum: MastermindDatum;
+  setCheckCB?: (check: boolean) => void;
+};
+export default function ProofChecker({ datum, setCheckCB }: Props) {
+  const [colorSequence, setColorSequence] = useState<Array<string | null>>([
+    null,
+    null,
+    null,
+    null,
+  ]);
+  const [selectedColorIndex, setSelectedColorIndex] = useState<number | null>(
+    null
+  );
+  const [proof, setProof] = useState<any>({});
+  const [solutionHash, setSolutionHash] = useState<string>("");
+  const [whitePegs, setWhitePegs] = useState<number>(0);
+  const [blackPegs, setBlackPegs] = useState<number>(0);
+  const [check, setCheck] = useState<boolean>(false);
+
+  const handleCheckButton = useCallback(async () => {
+    console.log("check");
+    console.log("proof", proof);
+    console.log("vkJson", vkJson);
+
+    const colorIndexes = colorSequence.map((c) => colorSchema.indexOf(c ?? ""));
+
+    console.log("Public signals", [
+      solutionHash,
+      colorIndexes[0].toString(),
+      colorIndexes[1].toString(),
+      colorIndexes[2],
+      colorIndexes[3],
+      blackPegs,
+      whitePegs,
+      solutionHash,
+    ]);
+
+    if (solutionHash === "") {
+      return;
+    }
+
+    const result = await snarkjs.groth16.verify(
+      vkJson,
+      [
+        solutionHash,
+        colorIndexes[0].toString(),
+        colorIndexes[1].toString(),
+        colorIndexes[2].toString(),
+        colorIndexes[3].toString(),
+        blackPegs.toString(),
+        whitePegs.toString(),
+        solutionHash,
+      ],
+      proof
+    );
+    console.log("result", result);
+    setCheck(result);
+    if (setCheckCB) {
+      setCheckCB(result);
+    }
+  }, [blackPegs, colorSequence, proof, solutionHash, whitePegs, setCheckCB]);
+
+  useEffect(() => {
+    setColorSequence(datum.guesses.map((g) => colorSchema[g]));
+    console.log(datum.getSnarkjsProof());
+    setProof(datum.getSnarkjsProof());
+    setSolutionHash(datum.hashSol.toString());
+    setWhitePegs(datum.whitePegs);
+    setBlackPegs(datum.blackPegs);
+  }, [datum]);
+
+  useEffect(() => {
+    handleCheckButton();
+  }, [handleCheckButton]);
+
+  return (
+    <>
+      <FormControl>
+        <FormLabel>Proof</FormLabel>
+        <Textarea
+          placeholder="Enter your proof"
+          rows={10}
+          value={JSON.stringify(proof)}
+          onChange={(evt) => setProof(JSON.parse(evt.target.value))}
+        />
+        <FormLabel>Solution hash</FormLabel>
+        <Input
+          value={solutionHash}
+          onChange={(evt) => setSolutionHash(evt.target.value)}
+          placeholder="Enter your solution hash"
+        ></Input>
+        <FormLabel>Black pegs</FormLabel>
+        <NumberInput
+          value={blackPegs}
+          onChange={(val) => setBlackPegs(Number(val))}
+        >
+          <NumberInputField placeholder="Enter number of black pegs" />
+        </NumberInput>
+        <FormLabel>White pegs</FormLabel>
+        <NumberInput
+          value={whitePegs}
+          onChange={(val) => setWhitePegs(Number(val))}
+        >
+          <NumberInputField placeholder="Enter number of white pegs" />
+        </NumberInput>
+        <HStack>
+          <Box width={"30%"}>
+            <ColorRow
+              colorSequence={colorSequence}
+              colorIndexSelected={selectedColorIndex}
+              blocked={false}
+              onChange={(cS) => {
+                setColorSequence(cS);
+              }}
+            />
+          </Box>
+          <Box width={"20%"}>
+            <Selector
+              onChange={(index) => {
+                setSelectedColorIndex(index);
+              }}
+            />
+          </Box>
+          <Box width={"50%"}>
+            <VStack height={"100%"}>
+              <Text fontSize={"4xl"}>Result</Text>
+              <Text>
+                {check && <CheckIcon boxSize={"240px"} color={"green"} />}
+              </Text>
+              <Text>
+                {!check && <CloseIcon boxSize={"240px"} color={"red"} />}
+              </Text>
+            </VStack>
+          </Box>
+        </HStack>
+      </FormControl>
+    </>
+  );
+}

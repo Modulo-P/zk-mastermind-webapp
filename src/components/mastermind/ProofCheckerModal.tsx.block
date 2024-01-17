@@ -1,0 +1,68 @@
+import { MastermindDatum } from "@/services/mastermind";
+import {
+  Box,
+  Button,
+  Center,
+  Modal,
+  ModalBody,
+  ModalCloseButton,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  ModalOverlay,
+  useDisclosure,
+} from "@chakra-ui/react";
+import ProofChecker from "./ProofChecker";
+import { useEffect, useState } from "react";
+import { PiPiBold } from "react-icons/pi";
+
+type Props = {
+  datum: MastermindDatum | null;
+};
+
+export default function ProofCheckerModal({ datum }: Props) {
+  const [check, setCheck] = useState<boolean>(false);
+  const { isOpen, onClose, onOpen } = useDisclosure();
+  const [checkerComponent, setCheckerComponent] = useState<JSX.Element | null>(
+    null
+  );
+
+  useEffect(() => {
+    if (datum) {
+      setCheckerComponent(<ProofChecker datum={datum} setCheckCB={setCheck} />);
+    }
+  }, [datum]);
+
+  return (
+    <>
+      <Button
+        type="button"
+        height={"50px"}
+        width={"50px"}
+        colorScheme={!datum ? "gray" : check ? "green" : "red"}
+        onClick={() => datum && onOpen()}
+      >
+        <PiPiBold size={"15px"} />
+      </Button>
+      <Box display={"none"}>{checkerComponent}</Box>
+      <Modal isOpen={isOpen} onClose={onClose} isCentered size={"full"}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader fontSize={"4xl"}>Info</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>{datum && checkerComponent}</ModalBody>
+        </ModalContent>
+      </Modal>
+    </>
+  );
+}
+
+export function ProofCheckerModalButton({
+  datum,
+  setCheck,
+}: {
+  datum: MastermindDatum;
+  setCheck: (check: boolean) => void;
+}) {
+  return <ProofChecker datum={datum} setCheckCB={setCheck} />;
+}
