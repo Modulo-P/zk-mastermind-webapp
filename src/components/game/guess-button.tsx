@@ -152,9 +152,7 @@ export default function GuessButton({ game, setInfoMessage }: Props) {
         toValue([
           {
             unit: process.env.NEXT_PUBLIC_HYDRA_ASSET_ID!,
-            quantity: (
-              Number(game.adaAmount) * (game.currentTurn === 0 ? 2 : 1)
-            ).toString(),
+            quantity: (Number(game.adaAmount) * 2).toString(),
           },
         ]).multiasset()!
       )

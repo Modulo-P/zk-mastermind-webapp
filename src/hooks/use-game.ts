@@ -38,10 +38,6 @@ export default function useGame({ id }: { id: number }) {
   });
 
   useEffect(() => {
-    console.log("Data changed", data);
-  }, [data]);
-
-  useEffect(() => {
     if (!data) return;
 
     const result: Game = {

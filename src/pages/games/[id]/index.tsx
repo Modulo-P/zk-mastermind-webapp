@@ -257,7 +257,8 @@ export default function Game() {
             </p>
             {game &&
               (hydraWalletAddress === game.codeBreaker ||
-                game.state === "CREATED") && (
+                (game.state === "CREATED" &&
+                  game.codeMaster !== hydraWalletAddress)) && (
                 <div>
                   <p>
                     You are the code breaker 🥷. Select a sequence and send your

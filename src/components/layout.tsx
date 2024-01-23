@@ -24,9 +24,9 @@ export default function Layout({ children }: React.PropsWithChildren) {
 
   const { connect } = useWallet();
 
-  useEffect(() => {
-    connect("eternl");
-  }, [connect]);
+  // useEffect(() => {
+  //   connect("eternl");
+  // }, [connect]);
 
   return (
     <div className={`${mainFont.className} tracking-wide`}>

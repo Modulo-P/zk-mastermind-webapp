@@ -1,5 +1,5 @@
 import { Tooltip } from "flowbite-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ColorCircle from "./color-circle";
 import Selector from "./selector";
 
@@ -40,6 +40,10 @@ export default function ColorRow({
       })
     );
   };
+
+  useEffect(() => {
+    setColorSequence(colorSequence ?? new Array(4).fill(0));
+  }, [colorSequence]);
 
   return (
     <div className="flex">

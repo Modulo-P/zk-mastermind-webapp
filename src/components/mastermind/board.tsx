@@ -19,7 +19,6 @@ export default function Board({ id, readonly }: Props) {
           {game &&
             game.rows &&
             game.rows.map((row, index) => {
-              console.log("row", row, "index", index);
               return (
                 <GameRow
                   key={index}
