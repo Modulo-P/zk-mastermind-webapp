@@ -131,46 +131,6 @@ export class MastermindDatum {
     return result;
   }
 
-  public toJson(): any {
-    const json = {
-      constructor: 0,
-      fields: [
-        { bytes: this.codeMaster },
-        { bytes: this.codeBreaker },
-        { int: this.hashSol },
-        { list: this.guesses.map((x) => ({ int: x })) },
-        { int: this.blackPegs },
-        { int: this.whitePegs },
-        { int: this.currentTurn },
-        { int: this.nPublic },
-        { list: this.vkAlpha1.map((x) => ({ int: x })) },
-        {
-          list: this.vkBeta2.map((x) => ({ list: x.map((y) => ({ int: y })) })),
-        },
-        {
-          list: this.vkGamma2.map((x) => ({
-            list: x.map((y) => ({ int: y })),
-          })),
-        },
-        {
-          list: this.vkDelta2.map((x) => ({
-            list: x.map((y) => ({ int: y })),
-          })),
-        },
-        {
-          list: this.vkAlphabeta12.map((x) => ({
-            list: x.map((y) => ({ list: y.map((z) => ({ int: z })) })),
-          })),
-        },
-        { list: this.ic.map((x) => ({ list: x.map((y) => ({ int: y })) })) },
-        { list: this.piA.map((x) => ({ int: x })) },
-        { list: this.piB.map((x) => ({ list: x.map((y) => ({ int: y })) })) },
-        { list: this.piC.map((x) => ({ int: x })) },
-      ],
-    };
-    return json;
-  }
-
   public toCSL(): CSL.PlutusData {
     const fields = CSL.PlutusList.new();
 
