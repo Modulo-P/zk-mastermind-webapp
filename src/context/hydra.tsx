@@ -9,6 +9,7 @@ import {
   useMemo,
   useState,
 } from "react";
+import { toast } from "react-toastify";
 import { useInterval } from "usehooks-ts";
 
 interface HydraContextInterface {
@@ -42,9 +43,25 @@ export default function useHydraStore() {
 
   useEffect(() => {
     const go = async () => {
-      if (!wallet.getUnusedAddresses) return;
+      let address = "";
+      if (wallet.getUnusedAddresses !== undefined) {
+        const unusedAddresses = await wallet.getUnusedAddresses();
+        if (unusedAddresses.length > 0) {
+          address = unusedAddresses[0];
+        } else {
+          const changeAddress = await wallet.getChangeAddress();
+          address = changeAddress;
+          if (!address) {
+            const useAddresses = await wallet.getUsedAddresses();
+            if (useAddresses.length > 0) {
+              address = useAddresses[0];
+            } else {
+              toast.error("No address available on Cardano wallet");
+            }
+          }
+        }
+      }
 
-      const address = (await wallet.getUnusedAddresses())[0];
       if (address && connected) {
         const privateKey = localStorage.getItem(
           "hydraWalletPrivateKey-" + address
