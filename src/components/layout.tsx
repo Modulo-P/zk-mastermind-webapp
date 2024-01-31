@@ -1,16 +1,17 @@
 "use client";
 
 import WalletBalance from "@/components/hydra/wallet-balance";
-import useHydraWallet from "@/hooks/use-hydra-wallet";
+import useConfetti from "@/hooks/use-confetti";
 import { CardanoWallet, useWallet } from "@meshsdk/react";
 import { DarkThemeToggle } from "flowbite-react";
 import { Space_Mono } from "next/font/google";
 import Link from "next/link";
 import { useEffect } from "react";
+import Confetti from "react-confetti";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import { useWindowSize } from "usehooks-ts";
 import BrandLogo from "./ui/brand-logo";
-import Confetti from "react-confetti";
-import useConfetti from "@/hooks/use-confetti";
 
 const mainFont = Space_Mono({
   weight: ["400", "700"],
@@ -18,15 +19,22 @@ const mainFont = Space_Mono({
 });
 
 export default function Layout({ children }: React.PropsWithChildren) {
-  const { hydraUtxos } = useHydraWallet();
   const { width, height } = useWindowSize();
   const { confetti, setConfetti } = useConfetti();
 
-  const { connect } = useWallet();
+  const { connected, wallet, disconnect } = useWallet();
 
-  // useEffect(() => {
-  //   connect("eternl");
-  // }, [connect]);
+  useEffect(() => {
+    const go = async () => {
+      if (wallet && connected && (await wallet.getNetworkId()) !== 0) {
+        toast.error("Please connect to the Cardano Testnet", {
+          theme: localStorage.getItem("theme") === "dark" ? "dark" : "light",
+        });
+        disconnect();
+      }
+    };
+    go();
+  }, [connected, wallet, disconnect]);
 
   return (
     <div className={`${mainFont.className} tracking-wide`}>
@@ -59,6 +67,17 @@ export default function Layout({ children }: React.PropsWithChildren) {
 
       <main className="mt-24">{children}</main>
       <DarkThemeToggle className="fixed bottom-10 right-10 border" />
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+      />
     </div>
   );
 }
