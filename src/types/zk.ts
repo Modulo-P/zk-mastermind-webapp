@@ -6,11 +6,12 @@ export type Proof = {
   pi_c: Array<string>;
 };
 
-export type Proof = {
-  pi_a: Array<string>;
-  pi_b: Array<Array<string>>;
-  pi_c: Array<string>;
-};
+export interface RdmProof {
+  piA: bigint[];
+  piB: bigint[][];
+  piC: bigint[];
+}
+
 
 export type VerficationKey = {
   nPublic: number;
@@ -23,7 +24,7 @@ export type VerficationKey = {
 };
 
 
-export type VerficationKeyDatum = {
+export type VerificationKeyDatum = {
   nPublic: number;
   vkAlpha1: Array<bigint>;
   vkBeta2: Array<Array<bigint>>;

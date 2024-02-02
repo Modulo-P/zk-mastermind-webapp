@@ -1,10 +1,11 @@
 import useHydraWallet from "@/hooks/use-hydra-wallet";
+import { Proof, RdmProof,PublicSignals, VerficationKey, VerificationKeyDatum } from "@/types/zk";
 import {
   dataCost,
   toValue,
   txBuilderConfig,
 } from "@/services/blockchain-utils";
-import { MastermindDatum, plutusScript } from "@/services/mastermind";
+import { MastermindDatum, plutusScript, calculateProof, MastermindRedeemer } from "@/services/mastermind";
 import { Game, GameSecret } from "@/types/game";
 import * as CSL from "@emurgo/cardano-serialization-lib-nodejs";
 import {
@@ -139,6 +140,18 @@ function CreateGameButton({
         );
       });
 
+      // Create an empty VerificationKeyDatum value
+      const emptyVerificationKeyDatum: VerificationKeyDatum = {
+        nPublic: 0,
+        vkAlpha1: [],
+        vkBeta2: [],
+        vkGamma2: [],
+        vkDelta2: [],
+        vkAlphabeta12: [],
+        IC: []
+      };
+
+      // Template of a MastermindDatum
       const datum = new MastermindDatum(
         resolvePaymentKeyHash(hydraWalletAddress),
         "",
@@ -148,23 +161,32 @@ function CreateGameButton({
         0,
         0,
         0,
-        [],
-        [],
-        [],
-        [],
-        [],
-        [],
-        [],
-        [],
-        []
+        emptyVerificationKeyDatum
       );
 
-      await datum.calculateProof(secretCode, randomSalt.toString());
+      // Create an empty RdmProof value
+      const emptyProof: RdmProof = {
+        piA: [],
+        piB: [],
+        piC: []
+      };
+
+      // Template of a MastermindRedeemer
+      const redeemer = new MastermindRedeemer(
+        emptyProof,
+        0
+      );
+
+      const { proof, publicSignals }  = await calculateProof(secretCode, randomSalt.toString(),datum);
+
+      datum.setProof(proof);
+      redeemer.setProof(publicSignals);
 
       const gameSecret: GameSecret = {
         secretCode: secretCode,
         secretSalt: randomSalt,
       };
+
       localStorage.setItem(
         "game_" + datum.hashSol.toString(),
         JSON.stringify(gameSecret)
