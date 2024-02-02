@@ -1,4 +1,10 @@
-import { Proof, RdmProof, PublicSignals, VerficationKey, VerificationKeyDatum } from "@/types/zk";
+import {
+  Proof,
+  RdmProof,
+  PublicSignals,
+  VerficationKey,
+  VerificationKeyDatum,
+} from "@/types/zk";
 import { Data, PlutusScript } from "@meshsdk/core";
 import vkJson from "./vk.json";
 import mastermindScript from "./plutus.json";
@@ -62,6 +68,8 @@ export const plutusScript: PlutusScript = {
 // Reference: https://github.com/Emurgo/cardano-serialization-lib/blob/master/rust/src/plutus.rs
 
 export class MastermindDatum {
+  private vkey: VerificationKeyDatum;
+
   constructor(
     public codeMaster: string,
     public codeBreaker: string,
@@ -71,10 +79,11 @@ export class MastermindDatum {
     public whitePegs: number,
     public currentTurn: number,
     public expirationTime: number,
-    public vkey: VerificationKeyDatum,
+    public proof: RdmProof | null = null
   ) {
     // Set verification key values from vk.json
     const vk: VerficationKey = vkJson;
+    this.vkey = {} as VerificationKeyDatum;
     this.vkey.nPublic = Number(vk.nPublic);
     this.vkey.vkAlpha1 = vk.vk_alpha_1.map((x) => BigInt(x));
     this.vkey.vkBeta2 = vk.vk_beta_2.map((x) => x.map((y) => BigInt(y)));
@@ -86,9 +95,12 @@ export class MastermindDatum {
     this.vkey.IC = vk.IC.map((x) => x.map((y) => BigInt(y)));
   }
 
-
   // Enocde the Mastermind PlutusData
   public toCSL(): CSL.PlutusData {
+    if (this.proof === null) {
+      throw new Error("Proof is not set");
+    }
+
     // Create a Plutus List
     const fields = CSL.PlutusList.new();
 
@@ -126,7 +138,9 @@ export class MastermindDatum {
     // Transform each of the fields a to plutus data and append it to the vkey Plutus List
 
     vkey.add(
-      CSL.PlutusData.new_integer(CSL.BigInt.from_str(this.vkey.nPublic.toString()))
+      CSL.PlutusData.new_integer(
+        CSL.BigInt.from_str(this.vkey.nPublic.toString())
+      )
     );
 
     const vkAlpha1 = CSL.PlutusList.new();
@@ -203,7 +217,6 @@ export class MastermindDatum {
     });
     vkey.add(CSL.PlutusData.new_list(ic));
 
-
     // Create a Constructor that represents the VerificationKey type.
     const vkey_agreggation = CSL.PlutusData.new_constr_plutus_data(
       CSL.ConstrPlutusData.new(CSL.BigNum.from_str("0"), vkey)
@@ -211,6 +224,48 @@ export class MastermindDatum {
 
     // Append the VerificationKey Data to the fields Plutus List
     fields.add(vkey_agreggation);
+
+    // Proof
+    // Create Plutus list of RdmProof
+    const proof_fields = CSL.PlutusList.new();
+
+    const piA = CSL.PlutusList.new();
+    this.proof.piA.forEach((piAElem) => {
+      piA.add(
+        CSL.PlutusData.new_integer(CSL.BigInt.from_str(piAElem.toString()))
+      );
+    });
+    proof_fields.add(CSL.PlutusData.new_list(piA));
+
+    const piB = CSL.PlutusList.new();
+    this.proof.piB.forEach((piBElem) => {
+      const piBElemList = CSL.PlutusList.new();
+      piBElem.forEach((piBElemElem) => {
+        piBElemList.add(
+          CSL.PlutusData.new_integer(
+            CSL.BigInt.from_str(piBElemElem.toString())
+          )
+        );
+      });
+      piB.add(CSL.PlutusData.new_list(piBElemList));
+    });
+    proof_fields.add(CSL.PlutusData.new_list(piB));
+
+    const piC = CSL.PlutusList.new();
+    this.proof.piC.forEach((piC1Elem) => {
+      piC.add(
+        CSL.PlutusData.new_integer(CSL.BigInt.from_str(piC1Elem.toString()))
+      );
+    });
+    proof_fields.add(CSL.PlutusData.new_list(piC));
+
+    // Create a Constructor that represents the RdmProof type.
+    const proofValue = CSL.PlutusData.new_constr_plutus_data(
+      CSL.ConstrPlutusData.new(CSL.BigNum.from_str("0"), proof_fields)
+    );
+
+    // Add the RdmProof Data to the fields of MastermindRedeemer
+    fields.add(proofValue);
 
     // Create a Constructor that represents the MastermindDatum type.
     const result = CSL.PlutusData.new_constr_plutus_data(
@@ -256,7 +311,7 @@ export class MastermindDatum {
     // Create a Mastermind data object with empty values
     const vk_template: VerificationKeyDatum = {} as VerificationKeyDatum;
 
-    const vk_fields = fields.get(8).as_constr_plutus_data()!.data()
+    const vk_fields = fields.get(8).as_constr_plutus_data()!.data();
 
     vk_template.nPublic = Number(vk_fields.get(0)!.as_integer()!.to_str());
 
@@ -413,6 +468,59 @@ export class MastermindDatum {
 
     result.vkey = vk_template;
 
+    // Get the first field element of RdmProof
+    // Then get innter PlutusList from the PlutusData Constructor representing RdmProof
+
+    // Create a RdmProof data object with empty values
+    const proof: RdmProof = {} as RdmProof;
+
+    const rdm_proof_fields = fields.get(9).as_constr_plutus_data()!.data();
+
+    const piA = [];
+    for (var i = 0; i < rdm_proof_fields.get(0)!.as_list()!.len(); i++) {
+      piA.push(
+        BigInt(
+          rdm_proof_fields.get(0)!.as_list()!.get(i)!.as_integer()!.to_str()
+        )
+      );
+    }
+    proof.piA = piA;
+    const piB = [];
+    for (var i = 0; i < rdm_proof_fields.get(1)!.as_list()!.len(); i++) {
+      const piBElem = [];
+      for (
+        var j = 0;
+        j < rdm_proof_fields.get(1)!.as_list()!.get(i)!.as_list()!.len();
+        j++
+      ) {
+        piBElem.push(
+          BigInt(
+            rdm_proof_fields
+              .get(1)!
+              .as_list()!
+              .get(i)!
+              .as_list()!
+              .get(j)!
+              .as_integer()!
+              .to_str()
+          )
+        );
+      }
+      piB.push(piBElem);
+    }
+    proof.piB = piB;
+    const piC = [];
+    for (var i = 0; i < rdm_proof_fields.get(2)!.as_list()!.len(); i++) {
+      piC.push(
+        BigInt(
+          rdm_proof_fields.get(2)!.as_list()!.get(i)!.as_integer()!.to_str()
+        )
+      );
+    }
+    proof.piC = piC;
+
+    result.proof = proof;
+
     return new MastermindDatum(
       result.codeMaster,
       result.codeBreaker,
@@ -422,7 +530,7 @@ export class MastermindDatum {
       result.whitePegs,
       result.currentTurn,
       result.expirationTime,
-      result.vkey,
+      result.proof
     );
   }
 
@@ -436,7 +544,7 @@ export class MastermindDatum {
       this.whitePegs,
       this.currentTurn,
       this.expirationTime,
-      this.vkey,
+      this.proof
     );
   }
 
@@ -453,254 +561,55 @@ export class MastermindDatum {
     ];
   }
 
-  public setProof(publicSignals: PublicSignals): void {
-    this.hashSol = BigInt(publicSignals[0]);
-  }
-}
+  async calculateProof(secretCode: Array<number>, secretHash: string) {
+    const secretCodeIndex = secretCode;
+    const secretCodeNumber = BigInt(secretCodeIndex.join(""));
+    const secretCodeHashDec = BigInt(parseInt(secretHash, 16));
 
-// Mastermind Redeemer
+    const saltedSolution = secretCodeNumber + secretCodeHashDec;
 
+    const pedersen = await circomlibjs.buildPedersenHash();
+    const babyJub = await circomlibjs.buildBabyjub();
+    const F = babyJub.F;
 
+    const publicHash = pedersen.hash(
+      bigintBuffer.toBufferLE(saltedSolution, 32)
+    );
+    const publicHashUnpacked = babyJub.unpackPoint(publicHash);
 
-
-export class MastermindRedeemer {
-  constructor (
-    public proof: RdmProof,
-    public turn: number
-  ) {}
-
-public toCSL(): CSL.PlutusData  {
-    // Create Plutus list of MastermindRedeemer
-    const fields = CSL.PlutusList.new();
-
-     // Create Plutus list of RdmProof
-    const proof_fields = CSL.PlutusList.new();
-
-    const piA = CSL.PlutusList.new();
-    this.proof.piA.forEach((piAElem) => {
-      piA.add(
-        CSL.PlutusData.new_integer(CSL.BigInt.from_str(piAElem.toString()))
+    try {
+      const inputs = {
+        pubNumBlacks: this.blackPegs,
+        pubNumWhites: this.whitePegs,
+        pubSolnHash: F.toObject(publicHashUnpacked[0]),
+        privSaltedSoln: saltedSolution,
+        pubGuessA: this.guesses[0],
+        pubGuessB: this.guesses[1],
+        pubGuessC: this.guesses[2],
+        pubGuessD: this.guesses[3],
+        privSolnA: secretCodeIndex[0],
+        privSolnB: secretCodeIndex[1],
+        privSolnC: secretCodeIndex[2],
+        privSolnD: secretCodeIndex[3],
+      };
+      const { proof }: { proof: Proof } = await snarkjs.groth16.fullProve(
+        inputs,
+        "/mastermind.wasm",
+        "/mastermind.pk"
       );
-    });
-    proof_fields.add(CSL.PlutusData.new_list(piA));
-
-    const piB = CSL.PlutusList.new();
-    this.proof.piB.forEach((piBElem) => {
-      const piBElemList = CSL.PlutusList.new();
-      piBElem.forEach((piBElemElem) => {
-        piBElemList.add(
-          CSL.PlutusData.new_integer(
-            CSL.BigInt.from_str(piBElemElem.toString())
-          )
-        );
-      });
-      piB.add(CSL.PlutusData.new_list(piBElemList));
-    });
-    proof_fields.add(CSL.PlutusData.new_list(piB));
-
-    const piC = CSL.PlutusList.new();
-    this.proof.piC.forEach((piC1Elem) => {
-      piC.add(
-        CSL.PlutusData.new_integer(CSL.BigInt.from_str(piC1Elem.toString()))
-      );
-    });
-    proof_fields.add(CSL.PlutusData.new_list(piC));
-
-     // Create a Constructor that represents the RdmProof type.
-    const proofValue = CSL.PlutusData.new_constr_plutus_data(
-      CSL.ConstrPlutusData.new(CSL.BigNum.from_str("0"), proof_fields)
-    );
-
-    // Add the RdmProof Data to the fields of MastermindRedeemer
-    fields.add(proofValue);
-
-    // Create Turn PlutusData
-    const turn_id: string = this.turn.toString();
-    const turn = CSL.PlutusData.new_constr_plutus_data(
-      CSL.ConstrPlutusData.new(CSL.BigNum.from_str(turn_id), fields)
-    );
-
-    // Add the Turn PlutusData to the fields of MastermindRedeemer
-    fields.add(turn)
-
-    // Create a Constructor that represents the MastermindRedeemertype.
-    const result = CSL.PlutusData.new_constr_plutus_data(
-      CSL.ConstrPlutusData.new(CSL.BigNum.from_str("0"), fields)
-    );
-
-    result;
-
-    return result
-}
-
-public fromCSL(rdm: CSL.PlutusData) {
-  // Create a Mastermind data object with empty values
-  const result: MastermindRedeemer = {} as MastermindRedeemer;
-
-  // Create a RdmProof data object with empty values
-  const proof: RdmProof = {} as RdmProof;
-
-  // Check if redeemer its a Option<ConstrPlutusData>
-  // Then get the inner PlutusList representing MastermindRedeemer
-  const rdm_fields = rdm.as_constr_plutus_data()!.data();
-  
-  // Get the first field element of RdmProof
-  // Then get innter PlutusList from the PlutusData Constructor representing RdmProof
-  const rdm_proof_fields = rdm_fields.get(0).as_constr_plutus_data()!.data();
-
-
-  const piA = [];
-  for (var i = 0; i < rdm_proof_fields.get(0)!.as_list()!.len(); i++) {
-    piA.push(
-      BigInt(rdm_proof_fields.get(0)!.as_list()!.get(i)!.as_integer()!.to_str())
-    );
-  }
-  proof.piA = piA;
-  const piB = [];
-  for (var i = 0; i < rdm_proof_fields.get(1)!.as_list()!.len(); i++) {
-    const piBElem = [];
-    for (
-      var j = 0;
-      j < rdm_proof_fields.get(1)!.as_list()!.get(i)!.as_list()!.len();
-      j++
-    ) {
-      piBElem.push(
-        BigInt(
-          rdm_proof_fields
-            .get(1)!
-            .as_list()!
-            .get(i)!
-            .as_list()!
-            .get(j)!
-            .as_integer()!
-            .to_str()
-        )
-      );
+      console.log("Proof: ", proof);
+      this.proof = {
+        piA: proof.pi_a.map((e) => BigInt(e)),
+        piB: proof.pi_b.map((e1) => e1.map((e2) => BigInt(e2))),
+        piC: proof.pi_c.map((e) => BigInt(e)),
+      };
+    } catch (e) {
+      throw new Error("Not proof");
     }
-    piB.push(piBElem);
-  }
-  proof.piB = piB;
-  const piC = [];
-  for (var i = 0; i < rdm_proof_fields.get(2)!.as_list()!.len(); i++) {
-    piC.push(
-      BigInt(rdm_proof_fields.get(2)!.as_list()!.get(i)!.as_integer()!.to_str())
-    );
-  }
-  proof.piC = piC;
-
-  // From turn field get constuctor alternative
-  // Start == 1; Clue = 2; End == 3; Guess == 4;
-  const turn_constr_alternative = rdm_fields.get(1).as_constr_plutus_data()!.alternative();
-
-  // Transform into number type
-  const turn_id = Number(turn_constr_alternative.to_str());
-
-  // Set MastermindRedeemer value fields.
-  result.proof = proof;
-  result.turn = turn_id;
-
-  return result;
-}
-
-
-public setProof(proof: Proof): void {
-  this.proof.piA = proof.pi_a.map((x) => BigInt(x));
-  this.proof.piB = proof.pi_b.map((x) => x.map((y) => BigInt(y)));
-  this.proof.piC = proof.pi_c.map((x) => BigInt(x));
-}
-
-public getSnarkjsProof() {
-  const result: any = {};
-  result["protocol"] = "groth16";
-  result["curve"] = "bls12831";
-  result["pi_a"] = this.proof.piA.map((x) => x.toString());
-  result["pi_b"] = this.proof.piB.map((x) => x.map((y) => y.toString()));
-  result["pi_c"] = this.proof.piC.map((x) => x.toString());
-
-  return result;
-}
-
-}
-
-
-//export const startRedeemerMesh: Data = { alternative: 0, fields: [] };
-//export const clueRedeemerMesh: Data = { alternative: 1, fields: [] };
-//export const endRedeemerMesh: Data = { alternative: 2, fields: [] };
-//export const guessRedeemerMesh: Data = { alternative: 3, fields: [] };
-
-async function getProof(
-  datum: MastermindDatum,
-  secretCode: Array<number>,
-  secretHash: string
-) {
-  const secretCodeIndex = secretCode;
-  const secretCodeNumber = BigInt(secretCodeIndex.join(""));
-  const secretCodeHashDec = BigInt(parseInt(secretHash, 16));
-
-  const saltedSolution = secretCodeNumber + secretCodeHashDec;
-
-  const pedersen = await circomlibjs.buildPedersenHash();
-  const babyJub = await circomlibjs.buildBabyjub();
-  const F = babyJub.F;
-
-  const publicHash = pedersen.hash(bigintBuffer.toBufferLE(saltedSolution, 32));
-  const publicHashUnpacked = babyJub.unpackPoint(publicHash);
-
-  try {
-    const inputs = {
-      pubNumBlacks: datum.blackPegs,
-      pubNumWhites: datum.whitePegs,
-      pubSolnHash: F.toObject(publicHashUnpacked[0]),
-      privSaltedSoln: saltedSolution,
-      pubGuessA: datum.guesses[0],
-      pubGuessB: datum.guesses[1],
-      pubGuessC: datum.guesses[2],
-      pubGuessD: datum.guesses[3],
-      privSolnA: secretCodeIndex[0],
-      privSolnB: secretCodeIndex[1],
-      privSolnC: secretCodeIndex[2],
-      privSolnD: secretCodeIndex[3],
-    };
-    const { proof, publicSignals } = await snarkjs.groth16.fullProve(
-      inputs,
-      "/mastermind.wasm",
-      "/mastermind.pk"
-    );
-    console.log("Proof: ", proof);
-    console.log("Public signals: ", publicSignals);
-    return { proof, publicSignals };
-  } catch (e) {
-    throw new Error("Not proof");
   }
 }
 
-function leInt2Buff(n: bigint, len: number) {
-  let r = n;
-  let o = 0;
-  const buff = Buffer.alloc(len);
-  while (r > BigInt(0) && o < len) {
-    let c = r & BigInt(0xff);
-    r = r >> BigInt(8);
-    buff[o] = Number(c);
-    o++;
-  }
-  if (r > BigInt(0)) {
-    throw new Error("byte length overflow");
-  }
-
-  return buff;
-}
-
-//async function calculateProof(secretCode: Array<number>, secretHash: string, datum: MastermindDatum, rdm: MastermindRedeemer) {
-export async function calculateProof(secretCode: Array<number>, secretHash: string, datum: MastermindDatum) {
-  const result = await getProof(
-    datum,
-    secretCode,
-    secretHash
-  );
-
-  return result;
-  //datum.setProof(proof);
-  //rdm.setProof(publicSignals);
-  // Return?
-}
+export const startRedeemerMesh: Data = { alternative: 0, fields: [] };
+export const clueRedeemerMesh: Data = { alternative: 1, fields: [] };
+export const endRedeemerMesh: Data = { alternative: 2, fields: [] };
+export const guessRedeemerMesh: Data = { alternative: 3, fields: [] };

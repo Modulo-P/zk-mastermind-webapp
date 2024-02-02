@@ -1,11 +1,10 @@
 import useHydraWallet from "@/hooks/use-hydra-wallet";
-import { Proof, RdmProof,PublicSignals, VerficationKey, VerificationKeyDatum } from "@/types/zk";
 import {
   dataCost,
   toValue,
   txBuilderConfig,
 } from "@/services/blockchain-utils";
-import { MastermindDatum, plutusScript, calculateProof, MastermindRedeemer } from "@/services/mastermind";
+import { MastermindDatum, plutusScript } from "@/services/mastermind";
 import { Game, GameSecret } from "@/types/game";
 import * as CSL from "@emurgo/cardano-serialization-lib-nodejs";
 import {
@@ -17,9 +16,9 @@ import {
 import axios, { AxiosError } from "axios";
 import { Button, Modal, TextInput } from "flowbite-react";
 import { Space_Mono } from "next/font/google";
+import { useRouter } from "next/router";
 import React, { useCallback, useEffect, useState } from "react";
 import ColorRow from "../mastermind/color-row";
-import { useRouter } from "next/router";
 
 const mainFont = Space_Mono({
   weight: ["400", "700"],
@@ -140,17 +139,6 @@ function CreateGameButton({
         );
       });
 
-      // Create an empty VerificationKeyDatum value
-      const emptyVerificationKeyDatum: VerificationKeyDatum = {
-        nPublic: 0,
-        vkAlpha1: [],
-        vkBeta2: [],
-        vkGamma2: [],
-        vkDelta2: [],
-        vkAlphabeta12: [],
-        IC: []
-      };
-
       // Template of a MastermindDatum
       const datum = new MastermindDatum(
         resolvePaymentKeyHash(hydraWalletAddress),
@@ -160,27 +148,10 @@ function CreateGameButton({
         0,
         0,
         0,
-        0,
-        emptyVerificationKeyDatum
-      );
-
-      // Create an empty RdmProof value
-      const emptyProof: RdmProof = {
-        piA: [],
-        piB: [],
-        piC: []
-      };
-
-      // Template of a MastermindRedeemer
-      const redeemer = new MastermindRedeemer(
-        emptyProof,
         0
       );
 
-      const { proof, publicSignals }  = await calculateProof(secretCode, randomSalt.toString(),datum);
-
-      datum.setProof(proof);
-      redeemer.setProof(publicSignals);
+      await datum.calculateProof(secretCode, randomSalt.toString());
 
       const gameSecret: GameSecret = {
         secretCode: secretCode,
