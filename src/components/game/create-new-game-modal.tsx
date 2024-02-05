@@ -119,6 +119,14 @@ function CreateGameButton({
 
       const txBuilder = CSL.TransactionBuilder.new(txBuilderConfig);
 
+      // Set validity Interval
+      //const posixTime: number = new Date().getTime();
+      // const actualSlot = someFunc...
+      // const upperBound = actualSlot + 1200000
+      // const expirationTime = upperBound + 1200000
+      txBuilder.set_validity_start_interval_bignum(CSL.BigNum.from_str("10000000000"))
+      txBuilder.set_ttl_bignum((CSL.BigNum.from_str("10000000000"));
+
       const assetMap = new Map();
       assetMap.set(
         process.env.NEXT_PUBLIC_HYDRA_ASSET_ID!,
@@ -149,6 +157,7 @@ function CreateGameButton({
         0,
         0,
         0
+        // expirtation Time
       );
 
       await datum.calculateProof(secretCode, randomSalt.toString());
