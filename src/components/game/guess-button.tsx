@@ -20,7 +20,7 @@ import {
   resolvePaymentKeyHash,
   resolvePlutusScriptAddress,
 } from "@meshsdk/core";
-import axios, { AxiosError } from "axios";
+import axios, { AxiosError, AxiosResponse } from "axios";
 import { Button } from "flowbite-react";
 import { useEffect, useState } from "react";
 import Confetti from "react-confetti";
@@ -30,6 +30,48 @@ type Props = {
   game: Game;
   setInfoMessage: (message: string) => void;
 };
+
+// Interface of the Json Respond Koios
+
+interface BlockResponse {
+  hash: string;
+  epoch_no: number;
+  abs_slot: number;
+  epoch_slot: number;
+  block_height: number;
+  block_size: number;
+  block_time: number;
+  tx_count: number;
+  vrf_key: string;
+  pool: string;
+  op_cert_counter: number;
+  proto_major: number;
+  proto_minor: number;
+}
+
+
+async function fetchBlock() {
+  try {
+    const response: AxiosResponse<BlockResponse[]> = await axios.get<BlockResponse[]>('https://preprod.koios.rest/api/v1/blocks', {
+      headers: {
+        'accept': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'authorization': 'Bearer ' + process.env.KOIOS_API_KEY
+      },
+    });
+
+    console.log(response.headers);
+
+    const responseData: BlockResponse[] = response.data;
+    console.log(responseData);
+
+    return responseData; // Return the data
+  } catch (error) {
+    console.error('Error fetching blocks:', error);
+    throw error; // Rethrow the error or handle it as needed
+  }
+}
+
 
 export default function GuessButton({ game, setInfoMessage }: Props) {
   const { hydraUtxos, hydraWallet, hydraWalletAddress } = useHydraWallet();
@@ -139,6 +181,24 @@ export default function GuessButton({ game, setInfoMessage }: Props) {
     datum.codeBreaker = resolvePaymentKeyHash(hydraWalletAddress);
     datum.guesses = currentGameRow.colorSequence;
 
+    // Time expiration condition
+
+    // When the turn is of type "Start" two conditions have to be met:
+    // (1) ValidTime range has to be lesser or equal than 20 minutes (1200000 miliseconds)
+    // (2) Expiration time has to be greater or equal than the UpperBound of the Validity range + 20 min
+    if (game.currentTurn === 0) {
+      let blockInformation = await fetchBlock();
+      console.log(blockInformation[0]);
+      let lowerBound = (blockInformation[0].block_time).toString();
+      let upperBound = (lowerBound + (15 * 60 * 1000)).toString();
+      txBuilder.set_validity_start_interval_bignum(CSL.BigNum.from_str(lowerBound));
+      txBuilder.set_ttl_bignum((CSL.BigNum.from_str((upperBound))));
+      datum.expirationTime = Number(upperBound) + 1200000;
+    } else {
+      // If turn is of type "Guess" then just update the expiration time by 20 min
+      datum.expirationTime += 1200000;
+    }
+
     const txOut = txOutputBuilder
       .with_plutus_data(datum.toCSL())
       .with_address(
@@ -169,6 +229,12 @@ export default function GuessButton({ game, setInfoMessage }: Props) {
     txBuilder.calc_script_data_hash(
       CSL.TxBuilderConstants.plutus_default_cost_models()
     );
+
+    if (txBuilder.build_tx().is_valid()) {
+      console.log("Transaction is valid")
+    } else {
+      console.log("Transaction is not valid")
+    }
 
     try {
       const unsignedTx = txBuilder.build_tx().to_hex();

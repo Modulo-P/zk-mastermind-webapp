@@ -131,6 +131,11 @@ export class MastermindDatum {
         CSL.BigInt.from_str(this.currentTurn.toString())
       )
     );
+    fields.add(
+      CSL.PlutusData.new_integer(
+        CSL.BigInt.from_str(this.expirationTime.toString())
+      )
+    );
 
     // Create a Plutus List to gather VerificationKey values
     const vkey = CSL.PlutusList.new();
@@ -306,6 +311,7 @@ export class MastermindDatum {
     result.blackPegs = Number(fields.get(4)!.as_integer()!.to_str());
     result.whitePegs = Number(fields.get(5)!.as_integer()!.to_str());
     result.currentTurn = Number(fields.get(6)!.as_integer()!.to_str());
+    console.log(fields.get(7))
     result.expirationTime = Number(fields.get(7)!.as_integer()!.to_str());
 
     // Create a Mastermind data object with empty values
@@ -334,7 +340,7 @@ export class MastermindDatum {
         vkBeta2Elem.push(
           BigInt(
             vk_fields
-              .get(9)!
+              .get(2)!
               .as_list()!
               .get(i)!
               .as_list()!
@@ -581,7 +587,7 @@ export class MastermindDatum {
       const inputs = {
         pubNumBlacks: this.blackPegs,
         pubNumWhites: this.whitePegs,
-        pubSolnHash: F.toObject(publicHashUnpacked[0]),
+        pubSolnHash:  F.toObject(publicHashUnpacked[0]),
         privSaltedSoln: saltedSolution,
         pubGuessA: this.guesses[0],
         pubGuessB: this.guesses[1],
@@ -592,6 +598,7 @@ export class MastermindDatum {
         privSolnC: secretCodeIndex[2],
         privSolnD: secretCodeIndex[3],
       };
+      console.log(inputs);
       const { proof }: { proof: Proof } = await snarkjs.groth16.fullProve(
         inputs,
         "/mastermind.wasm",
@@ -607,6 +614,11 @@ export class MastermindDatum {
       throw new Error("Not proof");
     }
   }
+
+public setExpirationTime(slot: number) {
+  this.expirationTime = slot * 1000
+}
+
 }
 
 export const startRedeemerMesh: Data = { alternative: 0, fields: [] };

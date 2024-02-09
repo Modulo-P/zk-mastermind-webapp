@@ -12,7 +12,7 @@ import {
   resolvePaymentKeyHash,
   resolvePlutusScriptAddress,
 } from "@meshsdk/core";
-import axios from "axios";
+import axios, {AxiosResponse} from "axios";
 import { Button } from "flowbite-react";
 import { useEffect, useState } from "react";
 
@@ -155,13 +155,14 @@ export default function ClueButton({
         scriptTxInput,
         toValue(scriptUtxo.output.amount)
       );
-
+  
       const txOutputBuilder = CSL.TransactionOutputBuilder.new();
 
       datum.currentTurn++;
       datum.blackPegs = currentGameRow.blackPegs || 0;
       datum.whitePegs = currentGameRow.whitePegs || 0;
       datum.guesses = currentGameRow.colorSequence;
+      datum.expirationTime += 1200000;
 
       // setButtonText("Calculating proof...");
 
@@ -192,6 +193,12 @@ export default function ClueButton({
       txBuilder.calc_script_data_hash(
         CSL.TxBuilderConstants.plutus_default_cost_models()
       );
+
+      if (txBuilder.build_tx().is_valid()) {
+        console.log("Transaction is valid")
+      } else {
+        console.log("Transaction is not valid")
+      }
 
       const unsignedTx = txBuilder.build_tx().to_hex();
       const signedTx = await hydraWallet.signTx(unsignedTx, true);
