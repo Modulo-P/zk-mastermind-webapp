@@ -11,7 +11,9 @@ export default function GameList({ games }: { games?: Game[] }) {
   return (
     <>
       {games && games.length === 0 && (
-        <p className="text-center text-gray-400">No games</p>
+        <p className="prose dark:prose-invert text-center text-gray-400">
+          No games
+        </p>
       )}
       {games && games.length > 0 && (
         <div className="relative">
