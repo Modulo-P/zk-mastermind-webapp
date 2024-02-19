@@ -9,9 +9,12 @@ export default function ActiveGameTable() {
   const { hydraWalletAddress } = useHydraWallet();
   return (
     <>
-      {!hydraWalletAddress && <p>Connect to hydra</p>}
+      {!hydraWalletAddress && (
+        <p className="prose dark:prose-invert">Connect to hydra</p>
+      )}
       {hydraWalletAddress && (
         <div>
+          <p className="prose dark:prose-invert my-4">My games:</p>
           <GameList
             games={activeGames?.filter(
               (game) =>
@@ -20,7 +23,9 @@ export default function ActiveGameTable() {
                 game.state !== "FINISHED"
             )}
           />
-          <p className="prose dark:prose-invert">Games waiting an openent:</p>
+          <p className="prose dark:prose-invert my-4">
+            Games waiting an openent:
+          </p>
           <GameList
             games={activeGames?.filter(
               (game) =>
