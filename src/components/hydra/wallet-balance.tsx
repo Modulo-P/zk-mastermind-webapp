@@ -1,6 +1,6 @@
 import useDisclosure from "@/hooks/use-disclosure";
 import useHydraWallet from "@/hooks/use-hydra-wallet";
-import { Button } from "flowbite-react";
+import { Button, CustomFlowbiteTheme } from "flowbite-react";
 import { AiOutlineSwap } from "react-icons/ai";
 import WalletModal from "./wallet-modal";
 import { coalesceAssets } from "@/services/blockchain-utils";
@@ -19,16 +19,10 @@ function WalletBalance() {
         {hydraWalletAddress && (
           <div className="flex flex-row gap-2">
             <img
-              src={"/img/hydra.png"}
-              alt="Hydra logo"
-              width="28px"
-              className="inline dark:hidden not-prose"
-            />
-            <img
               src={"/img/hydra-white.png"}
               alt="Hydra logo"
               width="28px"
-              className="hidden dark:inline not-prose"
+              className="not-prose"
             />
             <div>
               {totalBalance.some(
@@ -54,7 +48,8 @@ function WalletBalance() {
         disabled={!hydraWalletAddress}
         outline
         color="gray"
-        className="h-[58px] mx-4"
+        theme={buttonTheme}
+        className="h-[58px] mx-4 "
         onClick={() => onOpen()}
       >
         <AiOutlineSwap />
@@ -65,3 +60,13 @@ function WalletBalance() {
 }
 
 export default WalletBalance;
+
+const buttonTheme: CustomFlowbiteTheme["button"] = {
+  color: {
+    gray: "bg-transparent !border-white ",
+  },
+
+  outline: {
+    on: "bg-transparent text-white",
+  },
+};

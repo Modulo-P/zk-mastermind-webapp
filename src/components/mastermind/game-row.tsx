@@ -71,7 +71,7 @@ function Peg({ color }: { color: string | null }) {
   return (
     <div
       className={`w-4 h-4 border rounded-full ${
-        color ? color : "bg-gray-200 dark:bg-gray-600"
+        color ? color : "bg-gray-50 dark:bg-gray-600"
       }`}
     />
   );
