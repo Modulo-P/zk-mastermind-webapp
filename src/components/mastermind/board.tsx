@@ -14,7 +14,7 @@ export default function Board({ id, readonly }: Props) {
 
   return (
     <div className="flex flex-row">
-      <div className="flex flex-col border">
+      <div className="flex flex-col border rounded-md bg-gray-400 dark:bg-transparent">
         <div className="flex flex-col">
           {game &&
             game.rows &&

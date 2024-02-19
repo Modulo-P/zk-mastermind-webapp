@@ -52,7 +52,7 @@ export default function Layout({ children }: React.PropsWithChildren) {
           }}
         />
       </div>
-      <div className="prose dark:prose-invert flex flex-row  w-full max-w-none fixed top-0 py-2 z-10 bg-gray-900 items-center">
+      <div className="prose prose-invert flex flex-row  w-full max-w-none fixed top-0 py-2 z-10 bg-gray-800  dark:bg-gray-900 items-center">
         <div className="ms-4">
           <Link href="/lobby" className="no-underline">
             <BrandLogo />

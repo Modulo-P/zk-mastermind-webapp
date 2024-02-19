@@ -15,10 +15,10 @@ export default function GameList({ games }: { games?: Game[] }) {
       )}
       {games && games.length > 0 && (
         <div className="relative">
-          <div className="bg-white h-10 right-10 w-full absolute z-10 dark:bg-gray-800"></div>
+          <div className="bg-gray-100 h-10 right-10 w-full absolute z-10 dark:bg-gray-800"></div>
           <div className="max-h-56 overflow-auto m-0 p-0 relative">
             <Table className="text-xs top-0">
-              <Table.Head className="sticky top-0 z-20">
+              <Table.Head className="sticky top-0 z-20 border-b border-gray-300 dark:border-0">
                 <Table.HeadCell>Code master</Table.HeadCell>
                 <Table.HeadCell>My role</Table.HeadCell>
                 <Table.HeadCell>hADA</Table.HeadCell>
