@@ -22,7 +22,11 @@ export default function ActiveGameTable() {
           />
           <p className="prose dark:prose-invert">Games waiting an openent:</p>
           <GameList
-            games={activeGames?.filter((game) => game.state === "CREATED")}
+            games={activeGames?.filter(
+              (game) =>
+                game.state === "CREATED" &&
+                game.codeMaster !== hydraWalletAddress
+            )}
           />
         </div>
       )}
