@@ -4,7 +4,11 @@ import {
   toValue,
   txBuilderConfig,
 } from "@/services/blockchain-utils";
-import { MastermindDatum, plutusScript } from "@/services/mastermind";
+import {
+  MastermindDatum,
+  plutusScript,
+  random128Hex,
+} from "@/services/mastermind";
 import { Game, GameSecret } from "@/types/game";
 import * as CSL from "@emurgo/cardano-serialization-lib-nodejs";
 import {
@@ -30,8 +34,6 @@ type CreateNewGameModalProps = {
   onClose: () => void;
 };
 
-
-
 export default function CreateNewGameModal({
   isOpen,
   onClose,
@@ -39,16 +41,14 @@ export default function CreateNewGameModal({
   const [colorSequence, setColorSequence] = useState<Array<number>>(
     Array.from({ length: 4 }, () => Math.ceil(Math.random() * 4))
   );
-  const [randomSalt, setRandomSalt] = useState<string>(
-    Math.floor(Math.random() * 2 ** 64).toString()
-  );
+  const [randomSalt, setRandomSalt] = useState<string>(random128Hex());
   const [adaAmount, setAdaAmount] = useState<string>("15");
 
   useEffect(() => {
     setColorSequence(
       Array.from({ length: 4 }, () => Math.ceil(Math.random() * 4))
     );
-    setRandomSalt(Math.floor(Math.random() * 2 ** 64).toString());
+    setRandomSalt(random128Hex());
     setAdaAmount("15");
   }, []);
 
@@ -64,11 +64,7 @@ export default function CreateNewGameModal({
           Now we need a secret salt for hashing the solution, you can select a
           random number, or type your own:
         </p>
-        <TextInput
-          type="number"
-          onChange={(evt) => setRandomSalt(evt.target.value)}
-          value={randomSalt}
-        />
+        <TextInput disabled value={randomSalt} />
         <p className="text-gray-400">DO NOT SHARE THIS NUMBER WITH ANYONE</p>
         <p>Introduce ADA amount</p>
         <TextInput
@@ -80,7 +76,7 @@ export default function CreateNewGameModal({
       <Modal.Footer>
         <CreateGameButton
           secretCode={colorSequence}
-          randomSalt={Number(randomSalt)}
+          randomSalt={randomSalt}
           adaAmount={Number(adaAmount)}
           onClose={onClose}
         />
@@ -100,7 +96,7 @@ function CreateGameButton({
   ...props
 }: {
   secretCode: Array<number>;
-  randomSalt: number;
+  randomSalt: string;
   adaAmount: number;
   onClose: () => void;
 } & React.ComponentProps<typeof Button>) {
@@ -153,7 +149,7 @@ function CreateGameButton({
         0
       );
 
-      await datum.calculateProof(secretCode, randomSalt.toString());
+      await datum.calculateProof(secretCode, randomSalt);
 
       const gameSecret: GameSecret = {
         secretCode: secretCode,
@@ -165,68 +161,68 @@ function CreateGameButton({
         JSON.stringify(gameSecret)
       );
 
-      const transactionOutputBuilder = CSL.TransactionOutputBuilder.new();
+      // const transactionOutputBuilder = CSL.TransactionOutputBuilder.new();
 
-      const txOut = transactionOutputBuilder
-        .with_plutus_data(datum.toCSL())
-        .with_address(
-          CSL.Address.from_bech32(resolvePlutusScriptAddress(plutusScript, 0))
-        )
-        .next()
-        .with_asset_and_min_required_coin_by_utxo_cost(
-          toValue([
-            {
-              unit: process.env.NEXT_PUBLIC_HYDRA_ASSET_ID!,
-              quantity: (adaAmount * 1000000).toString(),
-            },
-          ]).multiasset()!,
-          dataCost
-        )
-        .build();
+      // const txOut = transactionOutputBuilder
+      //   .with_plutus_data(datum.toCSL())
+      //   .with_address(
+      //     CSL.Address.from_bech32(resolvePlutusScriptAddress(plutusScript, 0))
+      //   )
+      //   .next()
+      //   .with_asset_and_min_required_coin_by_utxo_cost(
+      //     toValue([
+      //       {
+      //         unit: process.env.NEXT_PUBLIC_HYDRA_ASSET_ID!,
+      //         quantity: (adaAmount * 1000000).toString(),
+      //       },
+      //     ]).multiasset()!,
+      //     dataCost
+      //   )
+      //   .build();
 
-      txBuilder.add_output(txOut);
+      // txBuilder.add_output(txOut);
 
-      txBuilder.add_change_if_needed(
-        CSL.Address.from_bech32(hydraWalletAddress)
-      );
+      // txBuilder.add_change_if_needed(
+      //   CSL.Address.from_bech32(hydraWalletAddress)
+      // );
 
-      console.log("Tx ", txBuilder.build().to_hex());
+      // console.log("Tx ", txBuilder.build().to_hex());
 
-      if (txBuilder.build_tx().is_valid()) {
-        console.log("Transaction is valid")
-      } else {
-        console.log("Transaction is not valid")
-      }
+      // if (txBuilder.build_tx().is_valid()) {
+      //   console.log("Transaction is valid")
+      // } else {
+      //   console.log("Transaction is not valid")
+      // }
 
-      const txUnsigned = txBuilder.build_tx().to_hex();
-      const txSigned = await hydraWallet.signTx(txUnsigned);
-      const txHash = await hydraProvider.submitTx(txSigned);
-      alert("Game created with txHash " + txHash);
-      onClose();
+      // const txUnsigned = txBuilder.build_tx().to_hex();
+      // const txSigned = await hydraWallet.signTx(txUnsigned);
+      // const txHash = await hydraProvider.submitTx(txSigned);
+      // alert("Game created with txHash " + txHash);
+      // onClose();
 
-      const game: Partial<Game> = {
-        codeMaster: hydraWalletAddress,
-        solutionHash: datum.hashSol.toString(),
-        adaAmount: (adaAmount * 1000000).toString(),
-        txHash: txHash,
-        outputIndex: 0,
-        currentDatum: datum.toCSL().to_hex(),
-      };
+      // const game: Partial<Game> = {
+      //   codeMaster: hydraWalletAddress,
+      //   solutionHash: datum.hashSol.toString(),
+      //   adaAmount: (adaAmount * 1000000).toString(),
+      //   txHash: txHash,
+      //   outputIndex: 0,
+      //   currentDatum: datum.toCSL().to_hex(),
+      // };
 
-      try {
-        const response = await axios.post(
-          process.env.NEXT_PUBLIC_HYDRA_BACKEND + "/games",
-          game
-        );
-        console.log(response.data);
+      // try {
+      //   const response = await axios.post(
+      //     process.env.NEXT_PUBLIC_HYDRA_BACKEND + "/games",
+      //     game
+      //   );
+      //   console.log(response.data);
 
-        router.push("/games/" + response.data.data.id);
-      } catch (e) {
-        if (e instanceof AxiosError) {
-          console.log(e.response?.data);
-        }
-        console.log(e);
-      }
+      //   router.push("/games/" + response.data.data.id);
+      // } catch (e) {
+      //   if (e instanceof AxiosError) {
+      //     console.log(e.response?.data);
+      //   }
+      //   console.log(e);
+      // }
     }
   }, [
     hydraWalletAddress,

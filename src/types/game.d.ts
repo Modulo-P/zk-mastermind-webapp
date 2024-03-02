@@ -40,5 +40,5 @@ export type Row = {
 
 export type GameSecret = {
   secretCode: Array<number>;
-  secretSalt: number;
+  secretSalt: string;
 };

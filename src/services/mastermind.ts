@@ -13,6 +13,7 @@ const snarkjs = require("snarkjs");
 const circomlibjs = require("circomlibjs");
 import * as bigintBuffer from "bigint-buffer";
 import { rmdir } from "fs";
+import { createHash } from "crypto";
 
 export interface ColorSchema {
   color: string;
@@ -311,7 +312,7 @@ export class MastermindDatum {
     result.blackPegs = Number(fields.get(4)!.as_integer()!.to_str());
     result.whitePegs = Number(fields.get(5)!.as_integer()!.to_str());
     result.currentTurn = Number(fields.get(6)!.as_integer()!.to_str());
-    console.log(fields.get(7))
+    console.log(fields.get(7));
     result.expirationTime = Number(fields.get(7)!.as_integer()!.to_str());
 
     // Create a Mastermind data object with empty values
@@ -568,35 +569,34 @@ export class MastermindDatum {
   }
 
   async calculateProof(secretCode: Array<number>, secretHash: string) {
-    const secretCodeIndex = secretCode;
-    const secretCodeNumber = BigInt(secretCodeIndex.join(""));
-    const secretCodeHashDec = BigInt(parseInt(secretHash, 16));
+    const buffer = Buffer.alloc(4);
 
-    const saltedSolution = secretCodeNumber + secretCodeHashDec;
+    for (let i = 0; i < 4; i++) {
+      buffer.writeInt8(secretCode[i], i);
+    }
 
-    const pedersen = await circomlibjs.buildPedersenHash();
-    const babyJub = await circomlibjs.buildBabyjub();
-    const F = babyJub.F;
+    const randomSalt = BigInt("0x" + secretHash);
 
-    const publicHash = pedersen.hash(
-      bigintBuffer.toBufferLE(saltedSolution, 32)
-    );
-    const publicHashUnpacked = babyJub.unpackPoint(publicHash);
+    const salt = bitArray2buffer(dec2bitArray(randomSalt, 128));
+
+    const concatenated = Buffer.concat([buffer, salt]);
+
+    const hash = createHash("sha256").update(concatenated).digest("hex");
 
     try {
       const inputs = {
         pubNumBlacks: this.blackPegs,
         pubNumWhites: this.whitePegs,
-        pubSolnHash:  F.toObject(publicHashUnpacked[0]),
-        privSaltedSoln: saltedSolution,
+        pubSolnHash: BigInt("0x" + hash.substring(2)).toString(10),
+        privSalt: randomSalt,
         pubGuessA: this.guesses[0],
         pubGuessB: this.guesses[1],
         pubGuessC: this.guesses[2],
         pubGuessD: this.guesses[3],
-        privSolnA: secretCodeIndex[0],
-        privSolnB: secretCodeIndex[1],
-        privSolnC: secretCodeIndex[2],
-        privSolnD: secretCodeIndex[3],
+        privSolnA: secretCode[0],
+        privSolnB: secretCode[1],
+        privSolnC: secretCode[2],
+        privSolnD: secretCode[3],
       };
       console.log(inputs);
       const { proof }: { proof: Proof } = await snarkjs.groth16.fullProve(
@@ -615,13 +615,48 @@ export class MastermindDatum {
     }
   }
 
-public setExpirationTime(slot: number) {
-  this.expirationTime = slot * 1000
-}
-
+  public setExpirationTime(slot: number) {
+    this.expirationTime = slot * 1000;
+  }
 }
 
 export const startRedeemerMesh: Data = { alternative: 0, fields: [] };
 export const clueRedeemerMesh: Data = { alternative: 1, fields: [] };
 export const endRedeemerMesh: Data = { alternative: 2, fields: [] };
 export const guessRedeemerMesh: Data = { alternative: 3, fields: [] };
+
+export function random128Hex() {
+  function random16Hex() {
+    return (0x10000 | (Math.random() * 0x10000)).toString(16).substr(1);
+  }
+  return (
+    random16Hex() +
+    random16Hex() +
+    random16Hex() +
+    random16Hex() +
+    random16Hex() +
+    random16Hex() +
+    random16Hex() +
+    random16Hex()
+  );
+}
+
+function bitArray2buffer(a: Buffer) {
+  const len = Math.floor((a.length - 1) / 8) + 1;
+  const b = Buffer.alloc(len);
+
+  for (let i = 0; i < a.length; i++) {
+    const p = Math.floor(i / 8);
+    b[p] = b[p] | (Number(a[i]) << (7 - (i % 8)));
+  }
+  return b;
+}
+
+function dec2bitArray(dec: any, length: number) {
+  const result = [];
+  for (var i = 0; i < length; i++) {
+    result.push(Number((BigInt(dec) >> BigInt(i)) & BigInt(1)));
+  }
+
+  return Buffer.from(result);
+}
