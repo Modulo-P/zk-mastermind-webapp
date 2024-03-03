@@ -2,7 +2,11 @@ import useConfetti from "@/hooks/use-confetti";
 import useGame from "@/hooks/use-game";
 import useHydra from "@/hooks/use-hydra";
 import useHydraWallet from "@/hooks/use-hydra-wallet";
-import { toValue, txBuilderConfig } from "@/services/blockchain-utils";
+import {
+  toValue,
+  txBuilderConfig,
+  unixToSlot,
+} from "@/services/blockchain-utils";
 import { MastermindDatum, plutusScript } from "@/services/mastermind";
 import { GameSecret, Turn } from "@/types/game";
 import * as CSL from "@emurgo/cardano-serialization-lib-nodejs";
@@ -12,7 +16,7 @@ import {
   resolvePaymentKeyHash,
   resolvePlutusScriptAddress,
 } from "@meshsdk/core";
-import axios, {AxiosResponse} from "axios";
+import axios, { AxiosError, AxiosResponse } from "axios";
 import { Button } from "flowbite-react";
 import { useEffect, useState } from "react";
 
@@ -138,7 +142,7 @@ export default function ClueButton({
       const redeemer = CSL.Redeemer.new(
         CSL.RedeemerTag.new_spend(),
         CSL.BigNum.from_str("0"),
-        CSL.PlutusData.new_empty_constr_plutus_data(CSL.BigNum.from_str("1")),
+        CSL.PlutusData.new_empty_constr_plutus_data(CSL.BigNum.from_str("2")),
         CSL.ExUnits.new(
           CSL.BigNum.from_str("14000000"),
           CSL.BigNum.from_str("10000000000")
@@ -155,7 +159,7 @@ export default function ClueButton({
         scriptTxInput,
         toValue(scriptUtxo.output.amount)
       );
-  
+
       const txOutputBuilder = CSL.TransactionOutputBuilder.new();
 
       datum.currentTurn++;
@@ -164,7 +168,18 @@ export default function ClueButton({
       datum.guesses = currentGameRow.colorSequence;
       datum.expirationTime += 1200000;
 
-      // setButtonText("Calculating proof...");
+      // Time expiration condition
+
+      // When the turn is of type "Start" two conditions have to be met:
+      // (1) ValidTime range has to be lesser or equal than 20 minutes (1200000 miliseconds)
+      // (2) Expiration time has to be greater or equal than the UpperBound of the Validity range + 20 min
+
+      let lowerBound = unixToSlot(Date.now() - 60 * 1000);
+      let upperBound = (lowerBound + 15 * 60).toString();
+      txBuilder.set_validity_start_interval_bignum(
+        CSL.BigNum.from_str(lowerBound.toString())
+      );
+      txBuilder.set_ttl_bignum(CSL.BigNum.from_str(upperBound));
 
       await datum.calculateProof(
         gameSecret.secretCode,
@@ -172,7 +187,7 @@ export default function ClueButton({
       );
 
       const txOut = txOutputBuilder
-        .with_plutus_data(datum.toCSL())
+        .with_plutus_data(await datum.toCSL())
         .with_address(
           CSL.Address.from_bech32(resolvePlutusScriptAddress(plutusScript, 0))
         )
@@ -195,9 +210,9 @@ export default function ClueButton({
       );
 
       if (txBuilder.build_tx().is_valid()) {
-        console.log("Transaction is valid")
+        console.log("Transaction is valid");
       } else {
-        console.log("Transaction is not valid")
+        console.log("Transaction is not valid");
       }
 
       const unsignedTx = txBuilder.build_tx().to_hex();
@@ -213,7 +228,7 @@ export default function ClueButton({
         txHash,
         outputIndex: 0,
         player: "CODEMASTER",
-        datum: datum.toCSL().to_hex(),
+        datum: (await datum.toCSL()).to_hex(),
       };
 
       const response = await axios.post(
@@ -228,6 +243,8 @@ export default function ClueButton({
         setTimeout(() => {
           setButtonText("Submit clue");
         }, 3000);
+      } else if (e instanceof AxiosError) {
+        console.log(e.response?.data);
       }
       return;
     }

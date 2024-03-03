@@ -4,74 +4,27 @@ import useHydra from "@/hooks/use-hydra";
 import useHydraWallet from "@/hooks/use-hydra-wallet";
 import {
   addUTxOInputs,
+  slotToUnix,
   toValue,
   txBuilderConfig,
+  unixToSlot,
 } from "@/services/blockchain-utils";
-import {
-  MastermindDatum,
-  colorSchema,
-  plutusScript,
-} from "@/services/mastermind";
+import { MastermindDatum, plutusScript } from "@/services/mastermind";
 import { Game, Turn } from "@/types/game";
 import * as CSL from "@emurgo/cardano-serialization-lib-nodejs";
 import {
-  UTxO,
   keepRelevant,
   resolvePaymentKeyHash,
   resolvePlutusScriptAddress,
 } from "@meshsdk/core";
-import axios, { AxiosError, AxiosResponse } from "axios";
+import axios, { AxiosError } from "axios";
 import { Button } from "flowbite-react";
 import { useEffect, useState } from "react";
-import Confetti from "react-confetti";
-import { useWindowSize } from "usehooks-ts";
 
 type Props = {
   game: Game;
   setInfoMessage: (message: string) => void;
 };
-
-// Interface of the Json Respond Koios
-
-interface BlockResponse {
-  hash: string;
-  epoch_no: number;
-  abs_slot: number;
-  epoch_slot: number;
-  block_height: number;
-  block_size: number;
-  block_time: number;
-  tx_count: number;
-  vrf_key: string;
-  pool: string;
-  op_cert_counter: number;
-  proto_major: number;
-  proto_minor: number;
-}
-
-
-async function fetchBlock() {
-  try {
-    const response: AxiosResponse<BlockResponse[]> = await axios.get<BlockResponse[]>('https://preprod.koios.rest/api/v1/blocks', {
-      headers: {
-        'accept': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'authorization': 'Bearer ' + process.env.KOIOS_API_KEY
-      },
-    });
-
-    console.log(response.headers);
-
-    const responseData: BlockResponse[] = response.data;
-    console.log(responseData);
-
-    return responseData; // Return the data
-  } catch (error) {
-    console.error('Error fetching blocks:', error);
-    throw error; // Rethrow the error or handle it as needed
-  }
-}
-
 
 export default function GuessButton({ game, setInfoMessage }: Props) {
   const { hydraUtxos, hydraWallet, hydraWalletAddress } = useHydraWallet();
@@ -159,7 +112,7 @@ export default function GuessButton({ game, setInfoMessage }: Props) {
       CSL.RedeemerTag.new_spend(),
       CSL.BigNum.from_str("0"),
       CSL.PlutusData.new_empty_constr_plutus_data(
-        CSL.BigNum.from_str(game.currentTurn === 0 ? "0" : "3")
+        CSL.BigNum.from_str(game.currentTurn === 0 ? "0" : "1")
       ),
       CSL.ExUnits.new(
         CSL.BigNum.from_str("14000000"),
@@ -187,20 +140,20 @@ export default function GuessButton({ game, setInfoMessage }: Props) {
     // (1) ValidTime range has to be lesser or equal than 20 minutes (1200000 miliseconds)
     // (2) Expiration time has to be greater or equal than the UpperBound of the Validity range + 20 min
     if (game.currentTurn === 0) {
-      let blockInformation = await fetchBlock();
-      console.log(blockInformation[0]);
-      let lowerBound = (blockInformation[0].block_time).toString();
-      let upperBound = (lowerBound + (15 * 60 * 1000)).toString();
-      txBuilder.set_validity_start_interval_bignum(CSL.BigNum.from_str(lowerBound));
-      txBuilder.set_ttl_bignum((CSL.BigNum.from_str((upperBound))));
-      datum.expirationTime = Number(upperBound) + 1200000;
+      let lowerBound = unixToSlot(Date.now() - 60 * 1000);
+      let upperBound = (lowerBound + 15 * 60).toString();
+      txBuilder.set_validity_start_interval_bignum(
+        CSL.BigNum.from_str(lowerBound.toString())
+      );
+      txBuilder.set_ttl_bignum(CSL.BigNum.from_str(upperBound));
+      datum.expirationTime = slotToUnix(Number(upperBound) + 1200);
     } else {
       // If turn is of type "Guess" then just update the expiration time by 20 min
       datum.expirationTime += 1200000;
     }
 
     const txOut = txOutputBuilder
-      .with_plutus_data(datum.toCSL())
+      .with_plutus_data(await datum.toCSL())
       .with_address(
         CSL.Address.from_bech32(resolvePlutusScriptAddress(plutusScript, 0))
       )
@@ -231,9 +184,9 @@ export default function GuessButton({ game, setInfoMessage }: Props) {
     );
 
     if (txBuilder.build_tx().is_valid()) {
-      console.log("Transaction is valid")
+      console.log("Transaction is valid");
     } else {
-      console.log("Transaction is not valid")
+      console.log("Transaction is not valid");
     }
 
     try {
@@ -251,7 +204,7 @@ export default function GuessButton({ game, setInfoMessage }: Props) {
         txHash,
         outputIndex: 0,
         player: "CODEBREAKER",
-        datum: datum.toCSL().to_hex(),
+        datum: (await datum.toCSL()).to_hex(),
       };
 
       const response = await axios.post(

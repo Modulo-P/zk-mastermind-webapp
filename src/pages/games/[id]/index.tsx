@@ -5,7 +5,11 @@ import Board from "@/components/mastermind/board";
 import useGame from "@/hooks/use-game";
 import useHydra from "@/hooks/use-hydra";
 import useHydraWallet from "@/hooks/use-hydra-wallet";
-import { toValue, txBuilderConfig } from "@/services/blockchain-utils";
+import {
+  toValue,
+  txBuilderConfig,
+  unixToSlot,
+} from "@/services/blockchain-utils";
 import { plutusScript } from "@/services/mastermind";
 import * as CSL from "@emurgo/cardano-serialization-lib-nodejs";
 import { UTxO, keepRelevant, resolvePaymentKeyHash } from "@meshsdk/core";
@@ -126,7 +130,7 @@ export default function Game() {
         const redeemer = CSL.Redeemer.new(
           CSL.RedeemerTag.new_spend(),
           CSL.BigNum.from_str("0"),
-          CSL.PlutusData.new_empty_constr_plutus_data(CSL.BigNum.from_str("2")),
+          CSL.PlutusData.new_empty_constr_plutus_data(CSL.BigNum.from_str("3")),
           CSL.ExUnits.new(
             CSL.BigNum.from_str("14000000"),
             CSL.BigNum.from_str("10000000000")
@@ -145,6 +149,19 @@ export default function Game() {
         );
 
         const txOutputBuilder = CSL.TransactionOutputBuilder.new();
+
+        // Time expiration condition
+
+        // When the turn is of type "Start" two conditions have to be met:
+        // (1) ValidTime range has to be lesser or equal than 20 minutes (1200000 miliseconds)
+        // (2) Expiration time has to be greater or equal than the UpperBound of the Validity range + 20 min
+
+        let lowerBound = unixToSlot(Date.now() - 60 * 1000);
+        let upperBound = (lowerBound + 15 * 60).toString();
+        txBuilder.set_validity_start_interval_bignum(
+          CSL.BigNum.from_str(lowerBound.toString())
+        );
+        txBuilder.set_ttl_bignum(CSL.BigNum.from_str(upperBound));
 
         const value = toValue(scriptUtxo.output.amount);
 

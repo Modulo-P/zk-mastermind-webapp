@@ -129,3 +129,12 @@ export function addUTxOInputs(
     );
   });
 }
+
+// TODO Temporary solution to convert between slot and unix time
+export function unixToSlot(unix: number) {
+  return Math.floor(unix / 1000) - 1709391813 + 53708613;
+}
+
+export function slotToUnix(slot: number) {
+  return (slot + 1709391813 - 53708613) * 1000;
+}
