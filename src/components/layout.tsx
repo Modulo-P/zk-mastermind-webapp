@@ -6,12 +6,13 @@ import { CardanoWallet, useWallet } from "@meshsdk/react";
 import { DarkThemeToggle } from "flowbite-react";
 import { Space_Mono } from "next/font/google";
 import Link from "next/link";
-import { useEffect } from "react";
+import { use, useEffect } from "react";
 import Confetti from "react-confetti";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useWindowSize } from "usehooks-ts";
 import BrandLogo from "./ui/brand-logo";
+import WalletDropdown from "./ui/wallet-dropdown";
 
 const mainFont = Space_Mono({
   weight: ["400", "700"],
@@ -22,7 +23,13 @@ export default function Layout({ children }: React.PropsWithChildren) {
   const { width, height } = useWindowSize();
   const { confetti, setConfetti } = useConfetti();
 
-  const { connected, wallet, disconnect } = useWallet();
+  const { connected, wallet, disconnect, connect } = useWallet();
+
+  useEffect(() => {
+    if (connect && process.env.NODE_ENV === "development") {
+      connect("eternl");
+    }
+  }, [connect]);
 
   useEffect(() => {
     const go = async () => {
@@ -52,16 +59,15 @@ export default function Layout({ children }: React.PropsWithChildren) {
           }}
         />
       </div>
-      <div className="prose prose-invert flex flex-row  w-full max-w-none fixed top-0 py-2 z-10 bg-gray-800  dark:bg-gray-900 items-center">
+      <div className="flex flex-row  w-full max-w-none fixed top-0 py-2 z-10 bg-gray-800  dark:bg-gray-900 items-center">
         <div className="ms-4">
           <Link href="/lobby" className="no-underline">
             <BrandLogo />
           </Link>
         </div>
         <div className="flex-1" />
-        <WalletBalance />
         <div className="me-4">
-          <CardanoWallet />
+          <WalletDropdown />
         </div>
       </div>
 

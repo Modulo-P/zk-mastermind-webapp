@@ -201,7 +201,7 @@ function CreateGameButton({
       onClose();
 
       const game: Partial<Game> = {
-        codeMaster: hydraWalletAddress,
+        codeMasterAddress: hydraWalletAddress,
         solutionHash: datum.hashSol.toString(),
         adaAmount: (adaAmount * 1000000).toString(),
         txHash: txHash,

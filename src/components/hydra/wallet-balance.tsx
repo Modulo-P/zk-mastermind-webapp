@@ -5,7 +5,7 @@ import { AiOutlineSwap } from "react-icons/ai";
 import WalletModal from "./wallet-modal";
 import { coalesceAssets } from "@/services/blockchain-utils";
 
-function WalletBalance() {
+export default function WalletBalance() {
   const { hydraUtxos, hydraWalletAddress } = useHydraWallet();
 
   const totalBalance = coalesceAssets(hydraUtxos);
@@ -13,53 +13,37 @@ function WalletBalance() {
   const { isOpen, onClose, onOpen } = useDisclosure();
 
   return (
-    <div className="flex flex-row items-center">
-      <div className="flex items-center justify-center font-normal text-lg border rounded-t-md w-60 h-[58px] py-2 px-4 shadow-sm">
-        {!hydraWalletAddress && "Hydra not connected"}
-        {hydraWalletAddress && (
-          <div className="flex flex-row gap-2">
-            <img
-              src={"/img/hydra-white.png"}
-              alt="Hydra logo"
-              width="28px"
-              className="not-prose"
-            />
-            <div>
-              {totalBalance.some(
-                (a) => a.unit === process.env.NEXT_PUBLIC_HYDRA_ASSET_ID!
-              )
-                ? Math.round(
-                    (Number(
-                      totalBalance.filter(
-                        (a) =>
-                          a.unit === process.env.NEXT_PUBLIC_HYDRA_ASSET_ID!
-                      )[0].quantity ?? "0"
-                    ) /
-                      1_000_000) *
-                      100
-                  ) / 100
-                : 0}{" "}
-              hADA
-            </div>
+    <div className="flex flex-row">
+      {!hydraWalletAddress && "Click to connect!"}
+      {hydraWalletAddress && (
+        <div className="flex flex-row items-center gap-2">
+          <img
+            src={"/img/hydra-white.png"}
+            alt="Hydra logo"
+            width="28px"
+            className="not-prose"
+          />
+          <div>
+            {totalBalance.some(
+              (a) => a.unit === process.env.NEXT_PUBLIC_HYDRA_ASSET_ID!
+            )
+              ? Math.round(
+                  (Number(
+                    totalBalance.filter(
+                      (a) => a.unit === process.env.NEXT_PUBLIC_HYDRA_ASSET_ID!
+                    )[0].quantity ?? "0"
+                  ) /
+                    1_000_000) *
+                    100
+                ) / 100
+              : 0}{" "}
+            hADA
           </div>
-        )}
-      </div>
-      <Button
-        disabled={!hydraWalletAddress}
-        outline
-        color="gray"
-        theme={buttonTheme}
-        className="h-[58px] mx-4 "
-        onClick={() => onOpen()}
-      >
-        <AiOutlineSwap />
-      </Button>
-      <WalletModal openModal={isOpen} onClose={onClose} />
+        </div>
+      )}
     </div>
   );
 }
-
-export default WalletBalance;
 
 const buttonTheme: CustomFlowbiteTheme["button"] = {
   color: {

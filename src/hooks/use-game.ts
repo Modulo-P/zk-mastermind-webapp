@@ -43,7 +43,9 @@ export default function useGame({ id }: { id: number }) {
     const result: Game = {
       id: data.id,
       codeMaster: data.codeMaster,
+      codeMasterAddress: data.codeMasterAddress,
       codeBreaker: data.codeBreaker,
+      codeBreakerAddress: data.codeBreakerAddress,
       solutionHash: data.solutionHash,
       adaAmount: data.adaAmount,
       txHash: data.txHash,

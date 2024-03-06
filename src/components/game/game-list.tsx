@@ -22,6 +22,7 @@ export default function GameList({ games }: { games?: Game[] }) {
             <Table className="text-xs top-0">
               <Table.Head className="sticky top-0 z-20 border-b border-gray-300 dark:border-0">
                 <Table.HeadCell>Code master</Table.HeadCell>
+                <Table.HeadCell>Code breaker</Table.HeadCell>
                 <Table.HeadCell>My role</Table.HeadCell>
                 <Table.HeadCell>hADA</Table.HeadCell>
                 <Table.HeadCell>State</Table.HeadCell>
@@ -34,13 +35,12 @@ export default function GameList({ games }: { games?: Game[] }) {
                   games.map((game) => (
                     <Table.Row key={game.id}>
                       <Table.Cell className="overflow-ellipsis font-medium text-gray-900 dark:text-white">
-                        {game.codeMaster.substring(0, 14) +
-                          "..." +
-                          game.codeMaster.substring(game.codeMaster.length - 4)}
+                        {game.codeMaster.nickname}
                       </Table.Cell>
+                      <Table.Cell>{game.codeBreaker?.nickname}</Table.Cell>
                       <Table.Cell>
                         {hydraWalletAddress &&
-                        game.codeMaster === hydraWalletAddress
+                        game.codeMasterAddress === hydraWalletAddress
                           ? "Code master"
                           : "Code breaker"}
                       </Table.Cell>

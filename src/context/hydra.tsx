@@ -1,5 +1,5 @@
 import { HydraWebProvider } from "@/services/hydra";
-import { AppWallet, UTxO } from "@meshsdk/core";
+import { AppWallet, UTxO, resolveRewardAddress } from "@meshsdk/core";
 import { useAddress, useWallet } from "@meshsdk/react";
 import {
   Dispatch,
@@ -43,45 +43,81 @@ export default function useHydraStore() {
 
   useEffect(() => {
     const go = async () => {
-      let address = "";
+      // Get all wallet addresses
+      let addresses = new Set<string>();
+
       if (wallet.getUnusedAddresses !== undefined) {
         const unusedAddresses = await wallet.getUnusedAddresses();
-        if (unusedAddresses.length > 0) {
-          address = unusedAddresses[0];
-        } else {
-          const changeAddress = await wallet.getChangeAddress();
-          address = changeAddress;
-          if (!address) {
-            const useAddresses = await wallet.getUsedAddresses();
-            if (useAddresses.length > 0) {
-              address = useAddresses[0];
-            } else {
-              toast.error("No address available on Cardano wallet");
-            }
-          }
+        unusedAddresses.forEach((address) => addresses.add(address));
+      }
+
+      if (wallet.getChangeAddress !== undefined) {
+        const changeAddress = await wallet.getChangeAddress();
+        if (changeAddress) {
+          addresses.add(changeAddress);
         }
       }
 
-      if (address && connected) {
-        const privateKey = localStorage.getItem(
-          "hydraWalletPrivateKey-" + address
-        );
-        if (privateKey) {
-          connectToHydra({
-            setHydraWallet,
-            setHydraWalletAddress,
-            hydraProvider,
-            privateKey,
-            address,
-          });
-        } else {
-          connectToHydra({
-            setHydraWallet,
-            setHydraWalletAddress,
-            hydraProvider,
-            address,
-          });
+      if (wallet.getUsedAddresses !== undefined) {
+        const usedAddresses = await wallet.getUsedAddresses();
+        usedAddresses.forEach((address) => addresses.add(address));
+      }
+
+      // Resolve reward addresses
+      const rewardAddress = new Set<string>();
+
+      addresses.forEach((address) => {
+        try {
+          rewardAddress.add(resolveRewardAddress(address));
+        } catch (_) {}
+      });
+
+      // Find hydra private key
+      let privateKey: string | undefined;
+      let address: string | undefined;
+
+      // First look for the reward address
+      rewardAddress.forEach((addr) => {
+        const key = localStorage.getItem("hydraWalletPrivateKey-" + addr);
+        if (key) {
+          privateKey = key;
+          address = addr;
         }
+      });
+
+      // If there is no reward address, look for the other addresses
+      if (!privateKey) {
+        addresses.forEach((addr) => {
+          const key = localStorage.getItem("hydraWalletPrivateKey-" + addr);
+          if (key) {
+            privateKey = key;
+            address = addr;
+          }
+        });
+      }
+
+      // Select address to associate with hydra wallet
+      if (!privateKey) {
+        rewardAddress.forEach((addr) => {
+          if (!address) {
+            address = addr;
+          }
+        });
+        addresses.forEach((addr) => {
+          if (!address) {
+            address = addr;
+          }
+        });
+      }
+
+      if (connected && address) {
+        connectToHydra({
+          setHydraWallet,
+          setHydraWalletAddress,
+          hydraProvider,
+          privateKey,
+          address,
+        });
       } else {
         setHydraWallet(undefined);
         setHydraWalletAddress(undefined);

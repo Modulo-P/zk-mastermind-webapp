@@ -32,7 +32,7 @@ export default function Game() {
       if (
         game &&
         priorGameRow &&
-        game.codeMaster === hydraWalletAddress &&
+        game.codeMasterAddress === hydraWalletAddress &&
         game.currentTurn === 10 &&
         priorGameRow.blackPegs < 4
       ) {
@@ -40,10 +40,10 @@ export default function Game() {
       } else if (
         game &&
         priorGameRow &&
-        game.codeBreaker === hydraWalletAddress &&
+        game.codeBreakerAddress === hydraWalletAddress &&
         priorGameRow.blackPegs === 4
       ) {
-        winnerAddress = game.codeBreaker;
+        winnerAddress = game.codeBreakerAddress;
       }
 
       if (
@@ -185,7 +185,7 @@ export default function Game() {
         }
 
         const txOutCodeMaster = txOutputBuilder
-          .with_address(CSL.Address.from_bech32(game.codeMaster))
+          .with_address(CSL.Address.from_bech32(game.codeMasterAddress))
           .next()
           .with_value(codeMasterValue)
           .build();
@@ -193,7 +193,7 @@ export default function Game() {
         txBuilder.add_output(txOutCodeMaster);
 
         const txOutCodeBreaker = txOutputBuilder
-          .with_address(CSL.Address.from_bech32(game.codeBreaker))
+          .with_address(CSL.Address.from_bech32(game.codeBreakerAddress!))
           .next()
           .with_value(codeBreakerValue)
           .build();
@@ -262,7 +262,14 @@ export default function Game() {
       <div className="shadow border-2 ring-gray-200 dark:ring-gray-700 rounded-lg w-full flex flex-col backdrop-blur bg-gray-100 dark:bg-gray-800 px-10 py-8">
         <div className="flex flex-row gap-8 ">
           <div className="flex flex-col prose dark:prose-invert">
-            <h2 className="text-center">Board</h2>
+            <h2 className="text-center mb-2">Board</h2>
+            <p className="text-center my-2">
+              {game?.codeBreakerAddress && (
+                <>
+                  {game.codeMaster.nickname} 🆚 {game.codeBreaker.nickname}
+                </>
+              )}
+            </p>
             <p className="text-xs">TIP: click to change the color</p>
             {game?.rows && <Board id={game.id} readonly={false} />}
           </div>
@@ -273,9 +280,9 @@ export default function Game() {
               Hydra and ZK proofs on Cardano.
             </p>
             {game &&
-              (hydraWalletAddress === game.codeBreaker ||
+              (hydraWalletAddress === game.codeBreakerAddress ||
                 (game.state === "CREATED" &&
-                  game.codeMaster !== hydraWalletAddress)) && (
+                  game.codeMasterAddress !== hydraWalletAddress)) && (
                 <div>
                   <p>
                     You are the code breaker 🥷. Select a sequence and send your
@@ -291,7 +298,7 @@ export default function Game() {
                   />
                 </div>
               )}
-            {game && hydraWalletAddress === game.codeMaster && (
+            {game && hydraWalletAddress === game.codeMasterAddress && (
               <div>
                 <p>
                   You are the code master 🧙🏻‍♀️. Wait for the code breaker. When

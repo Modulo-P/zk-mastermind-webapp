@@ -2,8 +2,10 @@ import { ColorSchema } from "@/services/mastermind";
 
 export interface Game {
   id: number;
-  codeMaster: string;
-  codeBreaker: string;
+  codeMasterAddress: string;
+  codeMaster: User;
+  codeBreakerAddress: string | null;
+  codeBreaker: User | null;
   solutionHash: string;
   adaAmount: string;
   txHash: string;

@@ -18,8 +18,8 @@ export default function ActiveGameTable() {
           <GameList
             games={activeGames?.filter(
               (game) =>
-                (game.codeMaster === hydraWalletAddress ||
-                  game.codeBreaker === hydraWalletAddress) &&
+                (game.codeMasterAddress === hydraWalletAddress ||
+                  game.codeBreakerAddress === hydraWalletAddress) &&
                 game.state !== "FINISHED"
             )}
           />
@@ -30,7 +30,7 @@ export default function ActiveGameTable() {
             games={activeGames?.filter(
               (game) =>
                 game.state === "CREATED" &&
-                game.codeMaster !== hydraWalletAddress
+                game.codeMasterAddress !== hydraWalletAddress
             )}
           />
         </div>

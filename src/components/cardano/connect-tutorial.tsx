@@ -5,17 +5,58 @@ import { CardanoWallet, useWallet } from "@meshsdk/react";
 import { Button, TextInput } from "flowbite-react";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
+import axios from "axios";
+import { User } from "@/types/user";
+import { useUser } from "@/hooks/use-user";
 
 export default function ConnectTutorial() {
   const { connected } = useWallet();
   const { hydraWalletAddress, hydraUtxos } = useHydraWallet();
+  const [nickname, setNickname] = useState<string>("");
   const [depositAmount, setDepositAmount] = useState<string>("15");
   const { depositFundsToHydra } = useCardano();
   const router = useRouter();
+  const { user, setUser } = useUser();
 
   useEffect(() => {
-    console.log("hydraUtxos", hydraUtxos);
-  }, [hydraUtxos]);
+    if (user) {
+      setNickname(user.nickname);
+    }
+  }, [user]);
+
+  const handleSaveNickame = async (nickname: string) => {
+    if (hydraWalletAddress && nickname) {
+      try {
+        const response = await axios.get(
+          `${process.env.NEXT_PUBLIC_HYDRA_BACKEND}/users/?address=${hydraWalletAddress}`
+        );
+        let user: User | null = response.data.data;
+        if (!user) {
+          const response = await axios.post(
+            `${process.env.NEXT_PUBLIC_HYDRA_BACKEND}/users`,
+            {
+              address: hydraWalletAddress,
+              nickname,
+            }
+          );
+          user = response.data.data;
+        } else {
+          const response = await axios.patch(
+            `${process.env.NEXT_PUBLIC_HYDRA_BACKEND}/users`,
+            {
+              id: user.id,
+              address: hydraWalletAddress,
+              nickname,
+            }
+          );
+          user = response.data.data;
+        }
+        setUser(user);
+      } catch (error) {
+        console.error(error);
+      }
+    }
+  };
 
   return (
     <div className="shadow border-2 ring-gray-200 dark:ring-gray-700 rounded-lg w-full px-4 flex flex-col backdrop-blur bg-gray-100 dark:bg-gray-800">
@@ -33,6 +74,18 @@ export default function ConnectTutorial() {
         <li>
           Generate Hydra Wallet {connected && hydraWalletAddress ? "✅" : "❌"}
         </li>
+        <li>
+          Choose a nickname {connected && hydraWalletAddress ? "✅" : "❌"}
+        </li>
+        {connected && hydraWalletAddress && (
+          <div className="flex flex-row gap-2">
+            <TextInput
+              value={nickname}
+              onChange={(evt) => setNickname(evt.target.value)}
+            />
+            <Button onClick={() => handleSaveNickame(nickname)}>Save</Button>
+          </div>
+        )}
         <li>
           Deposit funds in Hydra{" "}
           {connected && hydraUtxos.length > 0 ? "✅" : "❌"}
