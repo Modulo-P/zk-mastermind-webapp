@@ -17,6 +17,7 @@ interface HydraContextInterface {
   hydraWalletAddress?: string;
   hydraUtxos: UTxO[];
   hydraProvider: HydraWebProvider;
+  hydraPrivateKey?: string;
 }
 
 const INITITAL_STATE: HydraContextInterface = {
@@ -28,6 +29,7 @@ export default function useHydraStore() {
   const { connected, wallet } = useWallet();
   const [hydraWallet, setHydraWallet] = useState<AppWallet>();
   const [hydraWalletAddress, setHydraWalletAddress] = useState<string>();
+  const [hydraPrivateKey, setHydraPrivateKey] = useState<string>();
   const hydraProvider = useMemo(() => new HydraWebProvider(), []);
   const [hydraUtxos, setHydraUtxos] = useState<UTxO[]>([]);
   useInterval(async () => {
@@ -114,6 +116,7 @@ export default function useHydraStore() {
         connectToHydra({
           setHydraWallet,
           setHydraWalletAddress,
+          setHydraPrivateKey,
           hydraProvider,
           privateKey,
           address,
@@ -126,18 +129,26 @@ export default function useHydraStore() {
     go();
   }, [connected, hydraProvider, wallet]);
 
-  return { hydraWallet, hydraWalletAddress, hydraUtxos, hydraProvider };
+  return {
+    hydraWallet,
+    hydraWalletAddress,
+    hydraUtxos,
+    hydraProvider,
+    hydraPrivateKey,
+  };
 }
 
 async function connectToHydra({
   setHydraWallet,
   setHydraWalletAddress,
+  setHydraPrivateKey,
   hydraProvider,
   privateKey,
   address,
 }: {
   setHydraWallet: Dispatch<SetStateAction<AppWallet | undefined>>;
   setHydraWalletAddress: Dispatch<SetStateAction<string | undefined>>;
+  setHydraPrivateKey: Dispatch<SetStateAction<string | undefined>>;
   hydraProvider: HydraWebProvider;
   privateKey?: string;
   address: string;
@@ -151,6 +162,7 @@ async function connectToHydra({
       );
     localStorage.setItem("hydraWalletPrivateKey-" + address, privateKeyToUse);
   }
+  setHydraPrivateKey(privateKeyToUse);
   const hydraWallet = new AppWallet({
     networkId: 0,
     fetcher: hydraProvider,

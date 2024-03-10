@@ -125,7 +125,7 @@ function CreateGameButton({
       const utxos = keepRelevant(assetMap, hydraUtxos, "10000000");
 
       utxos.forEach((utxo: UTxO) => {
-        txBuilder.add_input(
+        txBuilder.add_regular_input(
           CSL.Address.from_bech32(utxo.output.address),
           CSL.TransactionInput.new(
             CSL.TransactionHash.from_bytes(

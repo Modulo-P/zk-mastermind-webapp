@@ -93,7 +93,7 @@ export default function ClueButton({
       );
 
       utxos.forEach((utxo: UTxO) => {
-        txBuilder.add_input(
+        txBuilder.add_regular_input(
           CSL.Address.from_bech32(utxo.output.address),
           CSL.TransactionInput.new(
             CSL.TransactionHash.from_bytes(
@@ -114,7 +114,7 @@ export default function ClueButton({
 
       if (!collateralUTxo) throw new Error("No collateral utxo found");
 
-      txColBuilder.add_input(
+      txColBuilder.add_regular_input(
         CSL.Address.from_bech32(collateralUTxo.output.address),
         CSL.TransactionInput.new(
           CSL.TransactionHash.from_bytes(
@@ -206,7 +206,7 @@ export default function ClueButton({
       );
 
       txBuilder.calc_script_data_hash(
-        CSL.TxBuilderConstants.plutus_default_cost_models()
+        CSL.TxBuilderConstants.plutus_vasil_cost_models()
       );
 
       if (txBuilder.build_tx().is_valid()) {

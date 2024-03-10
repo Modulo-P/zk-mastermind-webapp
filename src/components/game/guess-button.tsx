@@ -16,6 +16,7 @@ import {
   keepRelevant,
   resolvePaymentKeyHash,
   resolvePlutusScriptAddress,
+  resolveTxHash,
 } from "@meshsdk/core";
 import axios, { AxiosError } from "axios";
 import { Button } from "flowbite-react";
@@ -27,7 +28,8 @@ type Props = {
 };
 
 export default function GuessButton({ game, setInfoMessage }: Props) {
-  const { hydraUtxos, hydraWallet, hydraWalletAddress } = useHydraWallet();
+  const { hydraUtxos, hydraWallet, hydraWalletAddress, hydraPrivateKey } =
+    useHydraWallet();
   const { findHydraUtxo } = useHydra();
 
   const [buttonText, setButtonText] = useState<string>("Submit guess");
@@ -83,7 +85,7 @@ export default function GuessButton({ game, setInfoMessage }: Props) {
 
     if (!collateralUTxo) throw new Error("No collateral utxo found");
 
-    txColBuilder.add_input(
+    txColBuilder.add_regular_input(
       CSL.Address.from_bech32(collateralUTxo.output.address),
       CSL.TransactionInput.new(
         CSL.TransactionHash.from_bytes(
@@ -105,7 +107,7 @@ export default function GuessButton({ game, setInfoMessage }: Props) {
 
     const script = CSL.PlutusScript.from_hex_with_version(
       plutusScript.code,
-      CSL.Language.new_plutus_v2()
+      CSL.Language.new_plutus_v3()
     );
 
     const redeemer = CSL.Redeemer.new(
@@ -179,9 +181,240 @@ export default function GuessButton({ game, setInfoMessage }: Props) {
       CSL.Ed25519KeyHash.from_hex(resolvePaymentKeyHash(hydraWalletAddress))
     );
 
-    txBuilder.calc_script_data_hash(
-      CSL.TxBuilderConstants.plutus_default_cost_models()
+    const costModels = CSL.TxBuilderConstants.plutus_default_cost_models();
+
+    costModels.insert(
+      CSL.Language.new_plutus_v3(),
+      CSL.CostModel.from_json(
+        JSON.stringify([
+          "205665",
+          "812",
+          "1",
+          "1",
+          "1000",
+          "571",
+          "0",
+          "1",
+          "1000",
+          "24177",
+          "4",
+          "1",
+          "1000",
+          "32",
+          "117366",
+          "10475",
+          "4",
+          "117366",
+          "10475",
+          "4",
+          "1046420",
+          "18",
+          "3387741",
+          "6",
+          "545063",
+          "1",
+          "66311195",
+          "23097",
+          "18",
+          "292890",
+          "18",
+          "94607019",
+          "87060",
+          "18",
+          "16598737",
+          "18",
+          "2359410",
+          "36",
+          "3973992",
+          "12",
+          "1102635",
+          "1",
+          "204557793",
+          "23271",
+          "36",
+          "307813",
+          "36",
+          "190191402",
+          "85902",
+          "36",
+          "33191512",
+          "36",
+          "388656972",
+          "1",
+          "402099373",
+          "72",
+          "2544991",
+          "72",
+          "23000",
+          "100",
+          "23000",
+          "100",
+          "23000",
+          "100",
+          "23000",
+          "100",
+          "23000",
+          "100",
+          "23000",
+          "100",
+          "23000",
+          "100",
+          "23000",
+          "100",
+          "100",
+          "100",
+          "23000",
+          "100",
+          "19537",
+          "32",
+          "175354",
+          "32",
+          "46417",
+          "4",
+          "221973",
+          "511",
+          "0",
+          "1",
+          "89141",
+          "32",
+          "497525",
+          "14068",
+          "4",
+          "2",
+          "196500",
+          "453240",
+          "220",
+          "0",
+          "1",
+          "1",
+          "1000",
+          "28662",
+          "4",
+          "2",
+          "245000",
+          "216773",
+          "62",
+          "1",
+          "1060367",
+          "12586",
+          "1",
+          "208512",
+          "421",
+          "1",
+          "187000",
+          "1000",
+          "52998",
+          "1",
+          "80436",
+          "32",
+          "43249",
+          "32",
+          "1000",
+          "32",
+          "80556",
+          "1",
+          "57667",
+          "4",
+          "1927926",
+          "82523",
+          "4",
+          "1000",
+          "10",
+          "197145",
+          "156",
+          "1",
+          "197145",
+          "156",
+          "1",
+          "204924",
+          "473",
+          "1",
+          "208896",
+          "511",
+          "1",
+          "52467",
+          "32",
+          "64832",
+          "32",
+          "65493",
+          "32",
+          "22558",
+          "32",
+          "16563",
+          "32",
+          "76511",
+          "32",
+          "196500",
+          "453240",
+          "220",
+          "0",
+          "1",
+          "1",
+          "69522",
+          "11687",
+          "0",
+          "1",
+          "60091",
+          "32",
+          "196500",
+          "453240",
+          "220",
+          "0",
+          "1",
+          "1",
+          "196500",
+          "453240",
+          "220",
+          "0",
+          "1",
+          "1",
+          "1159724",
+          "392670",
+          "0",
+          "2",
+          "806990",
+          "30482",
+          "4",
+          "1927926",
+          "82523",
+          "4",
+          "265318",
+          "0",
+          "4",
+          "0",
+          "85931",
+          "32",
+          "205665",
+          "812",
+          "1",
+          "1",
+          "41182",
+          "32",
+          "212342",
+          "32",
+          "31220",
+          "32",
+          "32696",
+          "32",
+          "43357",
+          "32",
+          "32247",
+          "32",
+          "38314",
+          "32",
+          "35190005",
+          "10",
+          "57996947",
+          "18975",
+          "10",
+          "39121781",
+          "32260",
+          "10",
+        ])
+      )
     );
+
+    txBuilder.calc_script_data_hash(costModels);
 
     if (txBuilder.build_tx().is_valid()) {
       console.log("Transaction is valid");
@@ -190,9 +423,15 @@ export default function GuessButton({ game, setInfoMessage }: Props) {
     }
 
     try {
-      const unsignedTx = txBuilder.build_tx().to_hex();
-      const signedTx = await hydraWallet.signTx(unsignedTx, true);
-      const txHash = await hydraWallet.submitTx(signedTx);
+      const unsignedTx = txBuilder.build_tx();
+      const transactionHash = CSL.hash_transaction(unsignedTx.body());
+      const Vkeywitnesses = signTx(hydraPrivateKey!, transactionHash);
+
+      const witnessSet = unsignedTx.witness_set();
+      witnessSet.set_vkeys(Vkeywitnesses);
+
+      const txSigned = CSL.Transaction.new(unsignedTx.body(), witnessSet);
+      const txHash = await hydraWallet.submitTx(txSigned.to_hex());
 
       const turn: Partial<Turn & { codeBreaker: string }> = {
         gameId: game.id,
@@ -214,6 +453,8 @@ export default function GuessButton({ game, setInfoMessage }: Props) {
     } catch (e) {
       if (e instanceof AxiosError) {
         console.log(e.response?.data);
+      } else {
+        console.log(e);
       }
     }
   };
@@ -239,4 +480,21 @@ export default function GuessButton({ game, setInfoMessage }: Props) {
       {buttonText}
     </Button>
   );
+}
+
+function signTx(
+  hydraPrivateKey: string,
+  transactionHash: CSL.TransactionHash
+): CSL.Vkeywitnesses {
+  try {
+    const signatures = CSL.Vkeywitnesses.new();
+
+    const paymentKey = CSL.PrivateKey.from_hex(hydraPrivateKey.slice(4));
+
+    signatures.add(CSL.make_vkey_witness(transactionHash, paymentKey));
+
+    return signatures;
+  } catch (error) {
+    throw new Error(`An error occurred during signTx: ${error}.`);
+  }
 }
