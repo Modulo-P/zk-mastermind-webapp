@@ -122,7 +122,7 @@ function CreateGameButton({
         process.env.NEXT_PUBLIC_HYDRA_ASSET_ID!,
         BigInt(adaAmount * 1000000)
       );
-      const utxos = keepRelevant(assetMap, hydraUtxos, "10000000");
+      const utxos = keepRelevant(assetMap, hydraUtxos, "15000000");
 
       utxos.forEach((utxo: UTxO) => {
         txBuilder.add_input(
