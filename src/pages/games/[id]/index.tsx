@@ -130,7 +130,7 @@ export default function Game() {
         const redeemer = CSL.Redeemer.new(
           CSL.RedeemerTag.new_spend(),
           CSL.BigNum.from_str("0"),
-          CSL.PlutusData.new_empty_constr_plutus_data(CSL.BigNum.from_str("3")),
+          CSL.PlutusData.new_empty_constr_plutus_data(CSL.BigNum.from_str("2")),
           CSL.ExUnits.new(
             CSL.BigNum.from_str("14000000"),
             CSL.BigNum.from_str("10000000000")

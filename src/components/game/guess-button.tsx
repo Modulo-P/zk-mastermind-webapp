@@ -69,7 +69,7 @@ export default function GuessButton({ game, setInfoMessage }: Props) {
           u.output.amount.find((a) => a.unit === "lovelace")?.quantity !==
           "5000000"
       ),
-      "10000000"
+      "30000000"
     );
 
     addUTxOInputs(utxos, txBuilder);
@@ -112,11 +112,11 @@ export default function GuessButton({ game, setInfoMessage }: Props) {
       CSL.RedeemerTag.new_spend(),
       CSL.BigNum.from_str("0"),
       CSL.PlutusData.new_empty_constr_plutus_data(
-        CSL.BigNum.from_str(game.currentTurn === 0 ? "0" : "1")
+        CSL.BigNum.from_str(game.currentTurn === 0 ? "0" : "3")
       ),
       CSL.ExUnits.new(
-        CSL.BigNum.from_str("14000000"),
-        CSL.BigNum.from_str("10000000000")
+        CSL.BigNum.from_str("14000000000000"),
+        CSL.BigNum.from_str("10000000000000000")
       )
     );
 
@@ -140,13 +140,17 @@ export default function GuessButton({ game, setInfoMessage }: Props) {
     // (1) ValidTime range has to be lesser or equal than 20 minutes (1200000 miliseconds)
     // (2) Expiration time has to be greater or equal than the UpperBound of the Validity range + 20 min
     if (game.currentTurn === 0) {
+      const now = Date.now();
+      console.log(unixToSlot(now), unixToSlot(now + 1200000));
+      console.log(slotToUnix(unixToSlot(now)));
       let lowerBound = unixToSlot(Date.now() - 60 * 1000);
-      let upperBound = (lowerBound + 15 * 60).toString();
+      let upperBound = (lowerBound + 20 * 60).toString();
       txBuilder.set_validity_start_interval_bignum(
         CSL.BigNum.from_str(lowerBound.toString())
       );
       txBuilder.set_ttl_bignum(CSL.BigNum.from_str(upperBound));
-      datum.expirationTime = slotToUnix(Number(upperBound) + 1200);
+      datum.expirationTime =
+        slotToUnix(Number(upperBound) + 20 * 60) - 19 * 24 * 60 * 60 * 1000;
     } else {
       // If turn is of type "Guess" then just update the expiration time by 20 min
       datum.expirationTime += 1200000;
@@ -192,6 +196,7 @@ export default function GuessButton({ game, setInfoMessage }: Props) {
     try {
       const unsignedTx = txBuilder.build_tx().to_hex();
       const signedTx = await hydraWallet.signTx(unsignedTx, true);
+      console.log("Signed tx", signedTx);
       const txHash = await hydraWallet.submitTx(signedTx);
 
       const turn: Partial<Turn & { codeBreaker: string }> = {

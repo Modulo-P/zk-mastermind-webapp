@@ -583,11 +583,13 @@ export class MastermindDatum {
 
     const hash = createHash("sha256").update(concatenated).digest("hex");
 
+    this.hashSol = BigInt("0x" + hash.substring(2));
+
     try {
       const inputs = {
         pubNumBlacks: this.blackPegs,
         pubNumWhites: this.whitePegs,
-        pubSolnHash: BigInt("0x" + hash.substring(2)).toString(10),
+        pubSolnHash: this.hashSol,
         privSalt: randomSalt,
         pubGuessA: this.guesses[0],
         pubGuessB: this.guesses[1],
