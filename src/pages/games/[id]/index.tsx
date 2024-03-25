@@ -6,6 +6,7 @@ import useGame from "@/hooks/use-game";
 import useHydra from "@/hooks/use-hydra";
 import useHydraWallet from "@/hooks/use-hydra-wallet";
 import {
+  addUTxOInputs,
   toValue,
   txBuilderConfig,
   unixToSlot,
@@ -80,18 +81,7 @@ export default function Game() {
           "30000000"
         );
 
-        utxos.forEach((utxo: UTxO) => {
-          txBuilder.add_input(
-            CSL.Address.from_bech32(utxo.output.address),
-            CSL.TransactionInput.new(
-              CSL.TransactionHash.from_bytes(
-                Buffer.from(utxo.input.txHash, "hex")
-              ),
-              utxo.input.outputIndex
-            ),
-            toValue(utxo.output.amount)
-          );
-        });
+        addUTxOInputs(utxos, txBuilder);
 
         const txColBuilder = CSL.TxInputsBuilder.new();
         const collateralUTxo = hydraUtxos.find(
@@ -102,7 +92,7 @@ export default function Game() {
 
         if (!collateralUTxo) throw new Error("No collateral utxo found");
 
-        txColBuilder.add_input(
+        txColBuilder.add_regular_input(
           CSL.Address.from_bech32(collateralUTxo.output.address),
           CSL.TransactionInput.new(
             CSL.TransactionHash.from_bytes(
@@ -137,8 +127,9 @@ export default function Game() {
           )
         );
 
-        const plutusWitness = CSL.PlutusWitness.new_without_datum(
+        const plutusWitness = CSL.PlutusWitness.new(
           script,
+          CSL.PlutusData.from_hex(game.currentDatum),
           redeemer
         );
 

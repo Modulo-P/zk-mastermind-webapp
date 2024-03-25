@@ -119,7 +119,7 @@ export function addUTxOInputs(
   txBuilder: CSL.TransactionBuilder
 ) {
   utxos.forEach((utxo: UTxO) => {
-    txBuilder.add_input(
+    txBuilder.add_regular_input(
       CSL.Address.from_bech32(utxo.output.address),
       CSL.TransactionInput.new(
         CSL.TransactionHash.from_bytes(Buffer.from(utxo.input.txHash, "hex")),
