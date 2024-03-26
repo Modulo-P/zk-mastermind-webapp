@@ -3,6 +3,7 @@ import useGame from "@/hooks/use-game";
 import useGameTransaction from "@/hooks/use-game-transaction";
 import useHydra from "@/hooks/use-hydra";
 import useHydraWallet from "@/hooks/use-hydra-wallet";
+import useTransactionLifecycle from "@/hooks/use-transaction-lifecyle";
 import {
   addUTxOInputs,
   toValue,
@@ -20,7 +21,7 @@ import {
 } from "@meshsdk/core";
 import axios, { AxiosError, AxiosResponse } from "axios";
 import { Button } from "flowbite-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 type ClueButtonProps = {
   id: number;
@@ -34,7 +35,6 @@ export default function ClueButton({
   setInfoMessage,
 }: ClueButtonProps) {
   const { hydraWallet, hydraUtxos, hydraWalletAddress } = useHydraWallet();
-  const { findHydraUtxo } = useHydra();
 
   const { game, currentGameRow, priorGameRow } = useGame({ id });
   const { setConfetti } = useConfetti();
@@ -44,6 +44,14 @@ export default function ClueButton({
     localStorage.getItem("game_" + game?.solutionHash)!
   ) as GameSecret;
   const { clue } = useGameTransaction();
+  const {
+    loading,
+    setLoading,
+    message,
+    setMessage,
+    reset,
+    waitTransactionConfirmation,
+  } = useTransactionLifecycle();
 
   useEffect(() => {
     if (!game) return;
@@ -63,7 +71,7 @@ export default function ClueButton({
     }
   }, [game, priorGameRow?.blackPegs, setConfetti, setInfoMessage]);
 
-  const handleClick = async () => {
+  const handleClick = useCallback(async () => {
     // setButtonText("Submitting clue...");
     if (
       !hydraWallet ||
@@ -74,12 +82,24 @@ export default function ClueButton({
       !currentGameRow
     )
       return;
+
     try {
+      setLoading(true);
+
+      setMessage("Submitting clue...");
+
       const { txHash, datum } = await clue({
         game,
         currentGameRow,
         gameSecret,
       });
+
+      setMessage("Waiting for confirmation...");
+
+      await waitTransactionConfirmation(txHash);
+
+      setMessage("Registering turn...");
+
       const turn: Partial<Turn> = {
         gameId: game.id,
         guessSequence: datum.guesses,
@@ -96,29 +116,56 @@ export default function ClueButton({
         `${process.env.NEXT_PUBLIC_HYDRA_BACKEND}/games/turns`,
         turn
       );
+
+      setButtonText("Waiting for opponent...");
     } catch (e) {
       if (e instanceof Error && e.message === "Not proof") {
         setButtonText("Error calculating proof");
-        console.log("Error calculating proof set message");
+        console.error("Error calculating proof set message");
         setErrorMessage("Error calculating proof");
         setTimeout(() => {
           setButtonText("Submit clue");
         }, 3000);
       } else if (e instanceof AxiosError) {
-        console.log(e.response?.data);
+        console.error(e.response?.data);
       }
-      return;
+      alert("Error submitting clue \n" + e);
+    } finally {
+      reset();
     }
-  };
+  }, [
+    clue,
+    currentGameRow,
+    game,
+    gameSecret,
+    hydraUtxos,
+    hydraWallet,
+    hydraWalletAddress,
+    reset,
+    setErrorMessage,
+    setLoading,
+    setMessage,
+    waitTransactionConfirmation,
+  ]);
 
   return (
     <Button
       type="button"
       color="blue"
       onClick={handleClick}
-      disabled={!game?.currentDatum || buttonText !== "Submit clue"}
+      disabled={
+        !game?.currentDatum ||
+        !hydraWallet ||
+        !hydraUtxos ||
+        !game ||
+        !game.rows ||
+        !hydraWalletAddress ||
+        !currentGameRow ||
+        loading ||
+        buttonText !== "Submit clue"
+      }
     >
-      {buttonText}
+      {loading ? message : buttonText}
     </Button>
   );
 }

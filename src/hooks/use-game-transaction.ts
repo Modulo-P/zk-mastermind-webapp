@@ -20,7 +20,6 @@ import { Game, GameSecret, Row, Turn } from "@/types/game";
 import useHydra from "./use-hydra";
 
 export default function useGameTransaction() {
-  const [loading, setLoading] = useState(false);
   const { hydraWallet, hydraWalletAddress, hydraProvider, hydraUtxos } =
     useHydraWallet();
   const { findHydraUtxo } = useHydra();
@@ -39,11 +38,8 @@ export default function useGameTransaction() {
         hydraWalletAddress &&
         !secretCode.some((s) => s === undefined) &&
         hydraWallet &&
-        !loading &&
         adaAmount > 0
       ) {
-        setLoading(false);
-
         const txBuilder = CSL.TransactionBuilder.new(txBuilderConfig);
 
         const assetMap = new Map();
@@ -51,7 +47,15 @@ export default function useGameTransaction() {
           process.env.NEXT_PUBLIC_HYDRA_ASSET_ID!,
           BigInt(adaAmount * 1000000)
         );
-        const utxos = keepRelevant(assetMap, hydraUtxos, "15000000");
+        const utxos = keepRelevant(
+          assetMap,
+          hydraUtxos.filter(
+            (u) =>
+              u.output.amount.find((a) => a.unit === "lovelace")?.quantity !==
+              "5000000"
+          ),
+          "2000000"
+        );
 
         utxos.forEach((utxo: UTxO) => {
           txBuilder.add_regular_input(
@@ -133,7 +137,7 @@ export default function useGameTransaction() {
         throw new Error("Invalid parameters");
       }
     },
-    [hydraProvider, hydraUtxos, hydraWallet, hydraWalletAddress, loading]
+    [hydraProvider, hydraUtxos, hydraWallet, hydraWalletAddress]
   );
 
   const guess = useCallback(
@@ -172,7 +176,7 @@ export default function useGameTransaction() {
             u.output.amount.find((a) => a.unit === "lovelace")?.quantity !==
             "5000000"
         ),
-        "30000000"
+        "2000000"
       );
 
       addUTxOInputs(utxos, txBuilder);
@@ -351,8 +355,9 @@ export default function useGameTransaction() {
           hydraUtxos.filter(
             (u) =>
               u.output.amount.find((a) => a.unit === "lovelace")?.quantity !==
-              "1000000"
-          )
+              "5000000"
+          ),
+          "2000000"
         );
 
         addUTxOInputs(utxos, txBuilder);
@@ -482,5 +487,5 @@ export default function useGameTransaction() {
     [findHydraUtxo, hydraUtxos, hydraWallet, hydraWalletAddress]
   );
 
-  return { createNewGame, guess, clue, loading };
+  return { createNewGame, guess, clue };
 }

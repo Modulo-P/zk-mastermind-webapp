@@ -1,29 +1,9 @@
-import useHydraWallet from "@/hooks/use-hydra-wallet";
-import {
-  dataCost,
-  toValue,
-  txBuilderConfig,
-} from "@/services/blockchain-utils";
-import {
-  MastermindDatum,
-  plutusScript,
-  random128Hex,
-} from "@/services/mastermind";
-import { Game, GameSecret } from "@/types/game";
-import * as CSL from "@emurgo/cardano-serialization-lib-nodejs";
-import {
-  UTxO,
-  keepRelevant,
-  resolvePaymentKeyHash,
-  resolvePlutusScriptAddress,
-} from "@meshsdk/core";
-import axios, { AxiosError } from "axios";
+import { random128Hex } from "@/services/mastermind";
 import { Button, Modal, TextInput } from "flowbite-react";
 import { Space_Mono } from "next/font/google";
-import { useRouter } from "next/router";
-import React, { use, useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import ColorRow from "../mastermind/color-row";
-import useGameTransaction from "@/hooks/use-game-transaction";
+import CreateGameButton from "./create-new-game-button";
 
 const mainFont = Space_Mono({
   weight: ["400", "700"],
@@ -86,77 +66,5 @@ export default function CreateNewGameModal({
         </Button>
       </Modal.Footer>
     </Modal>
-  );
-}
-
-function CreateGameButton({
-  secretCode,
-  randomSalt,
-  adaAmount,
-  onClose,
-  ...props
-}: {
-  secretCode: Array<number>;
-  randomSalt: string;
-  adaAmount: number;
-  onClose: () => void;
-} & React.ComponentProps<typeof Button>) {
-  const { hydraWalletAddress } = useHydraWallet();
-  const router = useRouter();
-  const { createNewGame, loading } = useGameTransaction();
-
-  const createNewGameHandler = useCallback(async () => {
-    if (
-      hydraWalletAddress &&
-      !secretCode.some((s) => s === undefined) &&
-      adaAmount > 0
-    ) {
-      try {
-        const { datum, txHash } = await createNewGame({
-          secretCode,
-          randomSalt,
-          adaAmount,
-        });
-
-        const game: Partial<Game> = {
-          codeMasterAddress: hydraWalletAddress,
-          solutionHash: datum.hashSol.toString(),
-          adaAmount: (adaAmount * 1000000).toString(),
-          txHash: txHash,
-          outputIndex: 0,
-          currentDatum: (await datum.toCSL()).to_hex(),
-        };
-
-        const response = await axios.post(
-          process.env.NEXT_PUBLIC_HYDRA_BACKEND + "/games",
-          game
-        );
-        console.log(response.data);
-
-        router.push("/games/" + response.data.data.id);
-      } catch (e) {
-        if (e instanceof AxiosError) {
-          console.log(e.response?.data);
-        }
-        console.log(e);
-      }
-    }
-  }, [
-    hydraWalletAddress,
-    secretCode,
-    adaAmount,
-    createNewGame,
-    randomSalt,
-    router,
-  ]);
-
-  return (
-    <Button
-      {...props}
-      onClick={() => createNewGameHandler()}
-      disabled={loading}
-    >
-      {loading ? "Creating game..." : "Create new game"}
-    </Button>
   );
 }

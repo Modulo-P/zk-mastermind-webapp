@@ -2,10 +2,11 @@ import useConfetti from "@/hooks/use-confetti";
 import useGame from "@/hooks/use-game";
 import useGameTransaction from "@/hooks/use-game-transaction";
 import useHydraWallet from "@/hooks/use-hydra-wallet";
+import useTransactionLifecycle from "@/hooks/use-transaction-lifecyle";
 import { Game, Turn } from "@/types/game";
 import axios, { AxiosError } from "axios";
 import { Button } from "flowbite-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 type Props = {
   game: Game;
@@ -19,7 +20,16 @@ export default function GuessButton({ game, setInfoMessage }: Props) {
   const { setConfetti } = useConfetti();
   const { currentGameRow, priorGameRow } = useGame({ id: game.id });
   const { guess } = useGameTransaction();
-  const handleClick = async () => {
+  const {
+    loading,
+    setLoading,
+    message,
+    setMessage,
+    waitTransactionConfirmation,
+    reset,
+  } = useTransactionLifecycle();
+
+  const handleClick = useCallback(async () => {
     if (
       !hydraWallet ||
       !hydraWalletAddress ||
@@ -30,7 +40,17 @@ export default function GuessButton({ game, setInfoMessage }: Props) {
       return;
 
     try {
+      setLoading(true);
+
+      setMessage("Submitting guess...");
+
       const { txHash, datum } = await guess({ game, currentGameRow });
+
+      setMessage("Waiting for confirmation...");
+
+      await waitTransactionConfirmation(txHash);
+
+      setMessage("Registering turn...");
 
       const turn: Partial<Turn & { codeBreaker: string }> = {
         gameId: game.id,
@@ -49,14 +69,28 @@ export default function GuessButton({ game, setInfoMessage }: Props) {
         `${process.env.NEXT_PUBLIC_HYDRA_BACKEND}/games/turns`,
         turn
       );
+      setButtonText("Waiting for a clue");
     } catch (e) {
       if (e instanceof AxiosError) {
-        console.log(e.response?.data);
+        console.error(e.response?.data);
       } else {
-        console.log(e);
+        console.error(e);
       }
+      alert("Error submitting guess \n" + e);
+    } finally {
+      reset();
     }
-  };
+  }, [
+    currentGameRow,
+    game,
+    guess,
+    hydraWallet,
+    hydraWalletAddress,
+    reset,
+    setLoading,
+    setMessage,
+    waitTransactionConfirmation,
+  ]);
 
   useEffect(() => {
     if (priorGameRow?.blackPegs === 4) {
@@ -74,9 +108,17 @@ export default function GuessButton({ game, setInfoMessage }: Props) {
     <Button
       color="teal"
       onClick={handleClick}
-      disabled={!game.currentDatum || buttonText !== "Submit guess"}
+      disabled={
+        !hydraWallet ||
+        !hydraWalletAddress ||
+        !game.currentDatum ||
+        !game.rows ||
+        !currentGameRow ||
+        loading ||
+        buttonText !== "Submit guess"
+      }
     >
-      {buttonText}
+      {loading ? message : buttonText}
     </Button>
   );
 }

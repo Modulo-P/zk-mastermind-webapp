@@ -4,6 +4,7 @@ import {
   BlockInfo,
   IFetcher,
   ISubmitter,
+  IListener,
   Protocol,
   TransactionInfo,
   UTxO,
@@ -11,7 +12,28 @@ import {
 import axios from "axios";
 import { Asset } from "copy-webpack-plugin";
 
-export class HydraWebProvider implements IFetcher, ISubmitter {
+export class HydraWebProvider implements IFetcher, ISubmitter, IListener {
+  onTxConfirmed(
+    txHash: string,
+    callback: () => void,
+    limit: number = 100
+  ): void {
+    let attempts = 0;
+
+    const checkTx = setInterval(async () => {
+      if (attempts >= limit) {
+        clearInterval(checkTx);
+      }
+      const utxos = await this.fetchUTxOs(txHash);
+      if (utxos.length > 0) {
+        clearInterval(checkTx);
+        callback();
+      } else {
+        attempts += 1;
+      }
+    }, 1_000);
+  }
+
   fetchAccountInfo(address: string): Promise<AccountInfo> {
     throw new Error("Method not implemented.");
   }
