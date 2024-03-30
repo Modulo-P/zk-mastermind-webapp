@@ -1,10 +1,13 @@
+import ClaimButton from "@/components/game/claim-button";
 import ClueForm from "@/components/game/clue-form";
 import GuessButton from "@/components/game/guess-button";
 import Layout from "@/components/layout";
 import Board from "@/components/mastermind/board";
 import useGame from "@/hooks/use-game";
+import useGameTransaction from "@/hooks/use-game-transaction";
 import useHydra from "@/hooks/use-hydra";
 import useHydraWallet from "@/hooks/use-hydra-wallet";
+import useTransactionLifecycle from "@/hooks/use-transaction-lifecyle";
 import {
   addUTxOInputs,
   toValue,
@@ -13,18 +16,20 @@ import {
 } from "@/services/blockchain-utils";
 import { plutusScript } from "@/services/mastermind";
 import * as CSL from "@emurgo/cardano-serialization-lib-nodejs";
-import { UTxO, keepRelevant, resolvePaymentKeyHash } from "@meshsdk/core";
+import { keepRelevant, resolvePaymentKeyHash } from "@meshsdk/core";
+import axios, { AxiosError } from "axios";
 import { useRouter } from "next/router";
 import { ReactElement, useEffect } from "react";
-import axios, { AxiosError } from "axios";
 
 export default function Game() {
   const router = useRouter();
   const { hydraWalletAddress, hydraWallet, hydraUtxos } = useHydraWallet();
   const { findHydraUtxo } = useHydra();
-  const { game, priorGameRow } = useGame({
+  const { game, priorGameRow, currentGameRow } = useGame({
     id: Number(router.query.id),
   });
+  const { end } = useGameTransaction();
+  const { waitTransactionConfirmation } = useTransactionLifecycle();
 
   useEffect(() => {
     const endGame = async () => {
@@ -64,150 +69,11 @@ export default function Game() {
       try {
         await setTimeout(() => {}, 5000);
 
-        const txBuilder = CSL.TransactionBuilder.new(txBuilderConfig);
-
-        const scriptUtxo = await findHydraUtxo(game.txHash, game.outputIndex);
-
-        if (!scriptUtxo) throw new Error("No game utxo found");
-
-        const assetMap = new Map();
-        const utxos = keepRelevant(
-          assetMap,
-          hydraUtxos.filter(
-            (u) =>
-              u.output.amount.find((a) => a.unit === "lovelace")?.quantity !==
-              "5000000"
-          ),
-          "30000000"
-        );
-
-        addUTxOInputs(utxos, txBuilder);
-
-        const txColBuilder = CSL.TxInputsBuilder.new();
-        const collateralUTxo = hydraUtxos.find(
-          (utxo) =>
-            utxo.output.amount.find((a) => a.unit === "lovelace")?.quantity ===
-            "5000000"
-        );
-
-        if (!collateralUTxo) throw new Error("No collateral utxo found");
-
-        txColBuilder.add_regular_input(
-          CSL.Address.from_bech32(collateralUTxo.output.address),
-          CSL.TransactionInput.new(
-            CSL.TransactionHash.from_bytes(
-              Buffer.from(collateralUTxo.input.txHash, "hex")
-            ),
-            collateralUTxo.input.outputIndex
-          ),
-          toValue(collateralUTxo.output.amount)
-        );
-
-        txBuilder.set_collateral(txColBuilder);
-
-        const scriptTxInput = CSL.TransactionInput.new(
-          CSL.TransactionHash.from_bytes(
-            Buffer.from(scriptUtxo.input.txHash, "hex")
-          ),
-          scriptUtxo.input.outputIndex
-        );
-
-        const script = CSL.PlutusScript.from_hex_with_version(
-          plutusScript.code,
-          CSL.Language.new_plutus_v2()
-        );
-
-        const redeemer = CSL.Redeemer.new(
-          CSL.RedeemerTag.new_spend(),
-          CSL.BigNum.from_str("0"),
-          CSL.PlutusData.new_empty_constr_plutus_data(CSL.BigNum.from_str("2")),
-          CSL.ExUnits.new(
-            CSL.BigNum.from_str("14000000"),
-            CSL.BigNum.from_str("10000000000")
-          )
-        );
-
-        const plutusWitness = CSL.PlutusWitness.new(
-          script,
-          CSL.PlutusData.from_hex(game.currentDatum),
-          redeemer
-        );
-
-        txBuilder.add_plutus_script_input(
-          plutusWitness,
-          scriptTxInput,
-          toValue(scriptUtxo.output.amount)
-        );
-
-        const txOutputBuilder = CSL.TransactionOutputBuilder.new();
-
-        // Time expiration condition
-
-        // When the turn is of type "Start" two conditions have to be met:
-        // (1) ValidTime range has to be lesser or equal than 20 minutes (1200000 miliseconds)
-        // (2) Expiration time has to be greater or equal than the UpperBound of the Validity range + 20 min
-
-        let lowerBound = unixToSlot(Date.now() - 60 * 1000);
-        let upperBound = (lowerBound + 15 * 60).toString();
-        txBuilder.set_validity_start_interval_bignum(
-          CSL.BigNum.from_str(lowerBound.toString())
-        );
-        txBuilder.set_ttl_bignum(CSL.BigNum.from_str(upperBound));
-
-        const value = toValue(scriptUtxo.output.amount);
-
-        const winnerValue = CSL.Value.new_with_assets(
-          value.coin().div_floor(CSL.BigNum.from_str("2")),
-          value.multiasset()!
-        );
-        const loserValue = CSL.Value.new_with_assets(
-          value.coin().div_floor(CSL.BigNum.from_str("2")),
-          CSL.MultiAsset.new()
-        );
-
-        let codeMasterValue: CSL.Value | null = null;
-        let codeBreakerValue: CSL.Value | null = null;
-        if (game.codeMaster === winnerAddress) {
-          codeMasterValue = winnerValue;
-          codeBreakerValue = loserValue;
-        } else {
-          codeMasterValue = loserValue;
-          codeBreakerValue = winnerValue;
-        }
-
-        const txOutCodeMaster = txOutputBuilder
-          .with_address(CSL.Address.from_bech32(game.codeMasterAddress))
-          .next()
-          .with_value(codeMasterValue)
-          .build();
-
-        txBuilder.add_output(txOutCodeMaster);
-
-        const txOutCodeBreaker = txOutputBuilder
-          .with_address(CSL.Address.from_bech32(game.codeBreakerAddress!))
-          .next()
-          .with_value(codeBreakerValue)
-          .build();
-
-        txBuilder.add_output(txOutCodeBreaker);
-
-        txBuilder.add_change_if_needed(
-          CSL.Address.from_bech32(hydraWalletAddress)
-        );
-
-        txBuilder.add_required_signer(
-          CSL.Ed25519KeyHash.from_hex(resolvePaymentKeyHash(hydraWalletAddress))
-        );
-
-        txBuilder.calc_script_data_hash(
-          CSL.TxBuilderConstants.plutus_default_cost_models()
-        );
-
-        const unsignedTx = txBuilder.build_tx().to_hex();
-        const signedTx = await hydraWallet.signTx(unsignedTx, true);
-        await hydraWallet.submitTx(signedTx);
-
         try {
+          const { txHash } = await end({ game, priorGameRow });
+
+          await waitTransactionConfirmation(txHash);
+
           game.state = "FINISHED";
           const response = await axios.patch(
             process.env.NEXT_PUBLIC_HYDRA_BACKEND + "/games",
@@ -228,6 +94,8 @@ export default function Game() {
     };
     endGame();
   }, [
+    currentGameRow,
+    end,
     findHydraUtxo,
     game,
     game?.rows,
@@ -271,7 +139,8 @@ export default function Game() {
               Hydra and ZK proofs on Cardano.
             </p>
             {game &&
-              (hydraWalletAddress === game.codeBreakerAddress ||
+              ((hydraWalletAddress === game.codeBreakerAddress &&
+                game.state === "STARTED") ||
                 (game.state === "CREATED" &&
                   game.codeMasterAddress !== hydraWalletAddress)) && (
                 <div>
@@ -289,16 +158,28 @@ export default function Game() {
                   />
                 </div>
               )}
-            {game && hydraWalletAddress === game.codeMasterAddress && (
-              <div>
+            {game &&
+              ["STARTED", "CREATED"].includes(game.state) &&
+              hydraWalletAddress === game.codeMasterAddress && (
+                <div>
+                  <p>
+                    You are the code master 🧙🏻‍♀️. Wait for the code breaker. When
+                    you recieve a guess, remember to give back the correct clue.
+                    Else you won&apos;t be able to continue the game.{" "}
+                  </p>
+                  <ClueForm id={game.id} />
+                </div>
+              )}
+            {game && game.state == "STARTED" && currentGameRow && (
+              <>
                 <p>
-                  You are the code master 🧙🏻‍♀️. Wait for the code breaker. When
-                  you recieve a guess, remember to give back the correct clue.
-                  Else you won&apos;t be able to continue the game.{" "}
+                  If your opponent doesn&apos;t respond within a time limit, you
+                  will have the right to claim the game.
                 </p>
-                <ClueForm id={game.id} />
-              </div>
+                <ClaimButton game={game} currentGameRow={currentGameRow} />
+              </>
             )}
+            {game && game.state === "FINISHED" && <p>The game is finished.</p>}
           </div>
         </div>
       </div>

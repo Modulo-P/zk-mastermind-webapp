@@ -58,6 +58,7 @@ export default function CreateGameButton({
           txHash: txHash,
           outputIndex: 0,
           currentDatum: (await datum.toCSL()).to_hex(),
+          expirationTime: "0",
         };
 
         const response = await axios.post(

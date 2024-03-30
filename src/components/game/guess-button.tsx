@@ -56,13 +56,14 @@ export default function GuessButton({ game, setInfoMessage }: Props) {
         gameId: game.id,
         codeBreaker: hydraWalletAddress,
         guessSequence: currentGameRow.colorSequence,
-        blackPegs: datum.blackPegs,
-        whitePegs: datum.whitePegs,
+        blackPegs: 0,
+        whitePegs: 0,
         turnNumber: datum.currentTurn,
         txHash,
         outputIndex: 0,
         player: "CODEBREAKER",
         datum: (await datum.toCSL()).to_hex(),
+        expirationTime: datum.expirationTime.toString(),
       };
 
       const response = await axios.post(
@@ -96,7 +97,7 @@ export default function GuessButton({ game, setInfoMessage }: Props) {
     if (priorGameRow?.blackPegs === 4) {
       setButtonText("You win!");
       setConfetti(true);
-    } else if (game.currentTurn === 10 && priorGameRow?.blackPegs !== 4) {
+    } else if (game.currentTurn === 20 && priorGameRow?.blackPegs !== 4) {
       setButtonText("You lose!");
     } else if (game.currentTurn % 2 === 0) {
       setButtonText("Submit guess");

@@ -4,6 +4,7 @@ import ClueButton from "./clue-button";
 import useGame from "@/hooks/use-game";
 import { GameSecret } from "@/types/game";
 import ColorRow from "../mastermind/color-row";
+import CancelButton from "./cancel-button";
 
 type ClueFormProps = {
   id: number;
@@ -71,12 +72,15 @@ export default function ClueForm({ id }: ClueFormProps) {
             }
           />
         </div>
-        {game && (
-          <ClueButton
-            id={game.id}
-            setErrorMessage={(message) => console.error(message)}
-            setInfoMessage={(message) => console.log(message)}
-          />
+        {game && currentGameRow && (
+          <div className="flex flex-row gap-4">
+            <ClueButton
+              id={game.id}
+              setErrorMessage={(message) => console.error(message)}
+              setInfoMessage={(message) => console.log(message)}
+            />
+            <CancelButton game={game} currentGameRow={currentGameRow} />
+          </div>
         )}
       </form>
     </div>

@@ -60,7 +60,7 @@ export default function ClueButton({
       setButtonText("You lose!");
     } else if (game.currentTurn === 0) {
       setButtonText("Waiting for a game...");
-    } else if (game.currentTurn === 10 && priorGameRow?.blackPegs !== 4) {
+    } else if (game.currentTurn === 20 && priorGameRow?.blackPegs !== 4) {
       setButtonText("You win!");
       setInfoMessage("You win!");
       setConfetti(true);
@@ -110,6 +110,7 @@ export default function ClueButton({
         outputIndex: 0,
         player: "CODEMASTER",
         datum: (await datum.toCSL()).to_hex(),
+        expirationTime: datum.expirationTime.toString(),
       };
 
       const response = await axios.post(

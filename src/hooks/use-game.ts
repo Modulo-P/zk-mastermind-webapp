@@ -5,7 +5,7 @@ import axios from "axios";
 import { useEffect, useMemo } from "react";
 
 export default function useGame({ id }: { id: number }) {
-  const MAX_TURNS = 10;
+  const MAX_TURNS = 20;
 
   const { currentGames, upsertCurrentGame, updateGameRow } = useGameStore();
 
@@ -54,6 +54,7 @@ export default function useGame({ id }: { id: number }) {
       currentDatum: data.currentDatum,
       state: data.state,
       turns: data.turns,
+      expirationTime: data.expirationTime,
     };
 
     result.rows = new Array<Row>(MAX_TURNS / 2);
@@ -93,7 +94,10 @@ export default function useGame({ id }: { id: number }) {
             colorSequence: turn.guessSequence,
             selectedArray: [],
             blocked: true,
-            selected: false,
+            selected:
+              result.turns.length === i + 1 && turn.blackPegs !== 4
+                ? true
+                : false,
             blackPegs: turn.blackPegs,
             whitePegs: turn.whitePegs,
             datum: turn.datum,
