@@ -4,9 +4,11 @@ import { Button } from "flowbite-react";
 import useDisclosure from "@/hooks/use-disclosure";
 import CreateNewGameModal from "@/components/game/create-new-game-modal";
 import ActiveGameTable from "@/components/game/active-games-table";
+import useHydraWallet from "@/hooks/use-hydra-wallet";
 
 export default function Lobby() {
   const { onOpen, isOpen, onClose } = useDisclosure();
+  const { hydraWalletAddress } = useHydraWallet();
 
   return (
     <>
@@ -22,6 +24,7 @@ export default function Lobby() {
               color="purple"
               size={"xs"}
               onClick={() => onOpen()}
+              disabled={!hydraWalletAddress}
             >
               Create new game
             </Button>

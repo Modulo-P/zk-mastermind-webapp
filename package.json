@@ -13,8 +13,8 @@
     "@emurgo/cardano-serialization-lib-nodejs": "@emurgo/cardano-serialization-lib-browser"
   },
   "dependencies": {
-    "@emurgo/cardano-serialization-lib-browser": "^11.5.0",
-    "@emurgo/cardano-serialization-lib-nodejs": "^11.5.0",
+    "@emurgo/cardano-serialization-lib-browser": "^12.0.0-alpha.23",
+    "@emurgo/cardano-serialization-lib-nodejs": "^12.0.0-alpha.23",
     "@meshsdk/core": "^1.5.11-beta.3",
     "@meshsdk/react": "^1.1.8",
     "@tanstack/react-query": "^5.14.2",

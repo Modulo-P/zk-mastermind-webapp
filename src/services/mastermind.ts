@@ -1,21 +1,14 @@
 import {
   Proof,
   RdmProof,
-  PublicSignals,
-  VerficationKey,
+  VerificationKey,
   VerificationKeyDatum,
 } from "@/types/zk";
-import { Data, PlutusScript } from "@meshsdk/core";
-import vkJson from "./vk.json";
-import mastermindScript from "./plutus.json";
 import * as CSL from "@emurgo/cardano-serialization-lib-nodejs";
-const snarkjs = require("snarkjs");
-const circomlibjs = require("circomlibjs");
-import * as bigintBuffer from "bigint-buffer";
-import { rmdir } from "fs";
+import { Data, PlutusScript } from "@meshsdk/core";
+import axios from "axios";
 import { createHash } from "crypto";
-const ff = require("ffjavascript");
-const bb = require("bigint-buffer");
+const snarkjs = require("snarkjs");
 
 export interface ColorSchema {
   color: string;
@@ -63,16 +56,42 @@ export const colorSchema: ColorSchema[] = [
   },
 ];
 
-export const plutusScript: PlutusScript = {
-  version: "V2",
-  code: mastermindScript.cborHex,
-};
+export class MastermindGame {
+  static vk: VerificationKeyDatum | null = null;
+  static snarkVk: VerificationKey | null = null;
+  static plutusScript: PlutusScript | null = null;
+
+  static _initialized = (async () => {
+    const vk: VerificationKey = (
+      await axios.get(`${process.env.NEXT_PUBLIC_HYDRA_BACKEND}/vk.json`)
+    ).data;
+
+    MastermindGame.snarkVk = vk;
+
+    let result = {} as VerificationKeyDatum;
+    result.nPublic = Number(vk.nPublic);
+    result.vkAlpha1 = vk.vk_alpha_1.map((x) => BigInt(x));
+    result.vkBeta2 = vk.vk_beta_2.map((x) => x.map((y) => BigInt(y)));
+    result.vkGamma2 = vk.vk_gamma_2.map((x) => x.map((y) => BigInt(y)));
+    result.vkDelta2 = vk.vk_delta_2.map((x) => x.map((y) => BigInt(y)));
+    result.vkAlphabeta12 = vk.vk_alphabeta_12.map((x) =>
+      x.map((y) => y.map((z) => BigInt(z)))
+    );
+    result.IC = vk.IC.map((x) => x.map((y) => BigInt(y)));
+    result.protocol = vk.protocol;
+    result.curve = vk.curve;
+
+    MastermindGame.vk = result;
+
+    MastermindGame.plutusScript = (
+      await axios.get(`${process.env.NEXT_PUBLIC_HYDRA_BACKEND}/plutus.json`)
+    ).data;
+  })();
+}
 
 // Reference: https://github.com/Emurgo/cardano-serialization-lib/blob/master/rust/src/plutus.rs
 
 export class MastermindDatum {
-  private vkey: VerificationKeyDatum;
-
   constructor(
     public codeMaster: string,
     public codeBreaker: string,
@@ -84,24 +103,19 @@ export class MastermindDatum {
     public expirationTime: number,
     public proof: RdmProof | null = null
   ) {
-    // Set verification key values from vk.json
-    const vk: VerficationKey = vkJson;
-    this.vkey = {} as VerificationKeyDatum;
-    this.vkey.nPublic = Number(vk.nPublic);
-    this.vkey.vkAlpha1 = vk.vk_alpha_1.map((x) => BigInt(x));
-    this.vkey.vkBeta2 = vk.vk_beta_2.map((x) => x.map((y) => BigInt(y)));
-    this.vkey.vkGamma2 = vk.vk_gamma_2.map((x) => x.map((y) => BigInt(y)));
-    this.vkey.vkDelta2 = vk.vk_delta_2.map((x) => x.map((y) => BigInt(y)));
-    this.vkey.vkAlphabeta12 = vk.vk_alphabeta_12.map((x) =>
-      x.map((y) => y.map((z) => BigInt(z)))
-    );
-    this.vkey.IC = vk.IC.map((x) => x.map((y) => BigInt(y)));
+    async function loadVk(self: MastermindDatum) {}
+
+    loadVk(this);
   }
 
   // Enocde the Mastermind PlutusData
-  public async toCSL(): Promise<CSL.PlutusData> {
+  public toCSL(): CSL.PlutusData {
     if (this.proof === null) {
       throw new Error("Proof is not set");
+    }
+
+    if (MastermindGame.vk === null) {
+      throw new Error("Verification Key is not set");
     }
 
     // Create a Plutus List
@@ -147,41 +161,82 @@ export class MastermindDatum {
 
     vkey.add(
       CSL.PlutusData.new_integer(
-        CSL.BigInt.from_str(this.vkey.nPublic.toString())
+        CSL.BigInt.from_str(MastermindGame.vk.nPublic.toString())
       )
     );
 
-    const vkAlpha1 = CSL.PlutusData.new_bytes(
-      Buffer.from(await compressedG1(this.vkey.vkAlpha1), "hex")
-    );
-    vkey.add(vkAlpha1);
+    const vkAlpha1 = CSL.PlutusList.new();
+    MastermindGame.vk.vkAlpha1.forEach((vk) => {
+      vkAlpha1.add(
+        CSL.PlutusData.new_integer(CSL.BigInt.from_str(vk.toString()))
+      );
+    });
+    vkey.add(CSL.PlutusData.new_list(vkAlpha1));
 
-    const vkBeta2 = CSL.PlutusData.new_bytes(
-      Buffer.from(await compressedG2(this.vkey.vkBeta2), "hex")
-    );
-    vkey.add(vkBeta2);
+    const vkBeta2 = CSL.PlutusList.new();
+    MastermindGame.vk.vkBeta2.forEach((vk) => {
+      const vkList = CSL.PlutusList.new();
+      vk.forEach((vkElem) => {
+        vkList.add(
+          CSL.PlutusData.new_integer(CSL.BigInt.from_str(vkElem.toString()))
+        );
+      });
+      vkBeta2.add(CSL.PlutusData.new_list(vkList));
+    });
+    vkey.add(CSL.PlutusData.new_list(vkBeta2));
 
-    const vkGamma2 = CSL.PlutusData.new_bytes(
-      Buffer.from(await compressedG2(this.vkey.vkGamma2), "hex")
-    );
-    vkey.add(vkGamma2);
+    const vkGamma2 = CSL.PlutusList.new();
+    MastermindGame.vk.vkGamma2.forEach((vk) => {
+      const vkList = CSL.PlutusList.new();
+      vk.forEach((vkElem) => {
+        vkList.add(
+          CSL.PlutusData.new_integer(CSL.BigInt.from_str(vkElem.toString()))
+        );
+      });
+      vkGamma2.add(CSL.PlutusData.new_list(vkList));
+    });
+    vkey.add(CSL.PlutusData.new_list(vkGamma2));
 
-    const vkDelta2 = CSL.PlutusData.new_bytes(
-      Buffer.from(await compressedG2(this.vkey.vkDelta2), "hex")
-    );
-    vkey.add(vkDelta2);
+    const vkDelta2 = CSL.PlutusList.new();
+    MastermindGame.vk.vkDelta2.forEach((vk) => {
+      const vkList = CSL.PlutusList.new();
+      vk.forEach((vkElem) => {
+        vkList.add(
+          CSL.PlutusData.new_integer(CSL.BigInt.from_str(vkElem.toString()))
+        );
+      });
+      vkDelta2.add(CSL.PlutusData.new_list(vkList));
+    });
+    vkey.add(CSL.PlutusData.new_list(vkDelta2));
 
     const vkAlphabeta12 = CSL.PlutusList.new();
-    vkAlphabeta12.add(CSL.PlutusData.new_bytes(new Uint8Array(8)));
+    MastermindGame.vk.vkAlphabeta12.forEach((vk) => {
+      const vkList = CSL.PlutusList.new();
+      vk.forEach((vkElem) => {
+        const vkElemList = CSL.PlutusList.new();
+        vkElem.forEach((vkElemElem) => {
+          vkElemList.add(
+            CSL.PlutusData.new_integer(
+              CSL.BigInt.from_str(vkElemElem.toString())
+            )
+          );
+        });
+        vkList.add(CSL.PlutusData.new_list(vkElemList));
+      });
+      vkAlphabeta12.add(CSL.PlutusData.new_list(vkList));
+    });
     vkey.add(CSL.PlutusData.new_list(vkAlphabeta12));
 
     const ic = CSL.PlutusList.new();
-    for (const icElem of this.vkey.IC) {
-      const icElemBS = CSL.PlutusData.new_bytes(
-        Buffer.from(await compressedG1(icElem), "hex")
-      );
-      ic.add(icElemBS);
-    }
+    MastermindGame.vk.IC.forEach((icElem) => {
+      const icElemList = CSL.PlutusList.new();
+      icElem.forEach((icElemElem) => {
+        icElemList.add(
+          CSL.PlutusData.new_integer(CSL.BigInt.from_str(icElemElem.toString()))
+        );
+      });
+      ic.add(CSL.PlutusData.new_list(icElemList));
+    });
     vkey.add(CSL.PlutusData.new_list(ic));
 
     // Create a Constructor that represents the VerificationKey type.
@@ -196,20 +251,35 @@ export class MastermindDatum {
     // Create Plutus list of RdmProof
     const proof_fields = CSL.PlutusList.new();
 
-    const piA = CSL.PlutusData.new_bytes(
-      Buffer.from(await compressedG1(this.proof.piA), "hex")
-    );
-    proof_fields.add(piA);
+    const piA = CSL.PlutusList.new();
+    this.proof.piA.forEach((piAElem) => {
+      piA.add(
+        CSL.PlutusData.new_integer(CSL.BigInt.from_str(piAElem.toString()))
+      );
+    });
+    proof_fields.add(CSL.PlutusData.new_list(piA));
 
-    const piB = CSL.PlutusData.new_bytes(
-      Buffer.from(await compressedG2(this.proof.piB), "hex")
-    );
-    proof_fields.add(piB);
+    const piB = CSL.PlutusList.new();
+    this.proof.piB.forEach((piBElem) => {
+      const piBElemList = CSL.PlutusList.new();
+      piBElem.forEach((piBElemElem) => {
+        piBElemList.add(
+          CSL.PlutusData.new_integer(
+            CSL.BigInt.from_str(piBElemElem.toString())
+          )
+        );
+      });
+      piB.add(CSL.PlutusData.new_list(piBElemList));
+    });
+    proof_fields.add(CSL.PlutusData.new_list(piB));
 
-    const piC = CSL.PlutusData.new_bytes(
-      Buffer.from(await compressedG1(this.proof.piC), "hex")
-    );
-    proof_fields.add(piC);
+    const piC = CSL.PlutusList.new();
+    this.proof.piC.forEach((piC1Elem) => {
+      piC.add(
+        CSL.PlutusData.new_integer(CSL.BigInt.from_str(piC1Elem.toString()))
+      );
+    });
+    proof_fields.add(CSL.PlutusData.new_list(piC));
 
     // Create a Constructor that represents the RdmProof type.
     const proofValue = CSL.PlutusData.new_constr_plutus_data(
@@ -223,6 +293,8 @@ export class MastermindDatum {
     const result = CSL.PlutusData.new_constr_plutus_data(
       CSL.ConstrPlutusData.new(CSL.BigNum.from_str("0"), fields)
     );
+
+    result;
 
     return result;
   }
@@ -256,7 +328,6 @@ export class MastermindDatum {
     result.blackPegs = Number(fields.get(4)!.as_integer()!.to_str());
     result.whitePegs = Number(fields.get(5)!.as_integer()!.to_str());
     result.currentTurn = Number(fields.get(6)!.as_integer()!.to_str());
-    console.log(fields.get(7));
     result.expirationTime = Number(fields.get(7)!.as_integer()!.to_str());
 
     // Create a Mastermind data object with empty values
@@ -266,41 +337,156 @@ export class MastermindDatum {
 
     vk_template.nPublic = Number(vk_fields.get(0)!.as_integer()!.to_str());
 
-    const vkAlpha1 = uncompressedG1(
-      Buffer.from(vk_fields.get(1)!.as_bytes()!).toString("hex")
-    );
+    const vkAlpha1 = [];
+    for (var i = 0; i < vk_fields.get(1)!.as_list()!.len(); i++) {
+      vkAlpha1.push(
+        BigInt(vk_fields.get(1)!.as_list()!.get(i)!.as_integer()!.to_str())
+      );
+    }
     vk_template.vkAlpha1 = vkAlpha1;
 
-    const vkBeta2 = uncompressedG2(
-      Buffer.from(vk_fields.get(2)!.as_bytes()!).toString("hex")
-    );
+    const vkBeta2 = [];
+    for (var i = 0; i < vk_fields.get(2)!.as_list()!.len(); i++) {
+      const vkBeta2Elem = [];
+      for (
+        var j = 0;
+        j < vk_fields.get(2)!.as_list()!.get(i)!.as_list()!.len();
+        j++
+      ) {
+        vkBeta2Elem.push(
+          BigInt(
+            vk_fields
+              .get(2)!
+              .as_list()!
+              .get(i)!
+              .as_list()!
+              .get(j)!
+              .as_integer()!
+              .to_str()
+          )
+        );
+      }
+      vkBeta2.push(vkBeta2Elem);
+    }
     vk_template.vkBeta2 = vkBeta2;
 
-    const vkGamma2 = uncompressedG2(
-      Buffer.from(vk_fields.get(3)!.as_bytes()!).toString("hex")
-    );
+    const vkGamma2 = [];
+    for (var i = 0; i < vk_fields.get(3)!.as_list()!.len(); i++) {
+      const vkGamma2Elem = [];
+      for (
+        var j = 0;
+        j < vk_fields.get(3)!.as_list()!.get(i)!.as_list()!.len();
+        j++
+      ) {
+        vkGamma2Elem.push(
+          BigInt(
+            vk_fields
+              .get(3)!
+              .as_list()!
+              .get(i)!
+              .as_list()!
+              .get(j)!
+              .as_integer()!
+              .to_str()
+          )
+        );
+      }
+      vkGamma2.push(vkGamma2Elem);
+    }
     vk_template.vkGamma2 = vkGamma2;
 
-    const vkDelta2 = uncompressedG2(
-      Buffer.from(vk_fields.get(4)!.as_bytes()!).toString("hex")
-    );
+    const vkDelta2 = [];
+    for (var i = 0; i < vk_fields.get(4)!.as_list()!.len(); i++) {
+      const vkDelta2Elem = [];
+      for (
+        var j = 0;
+        j < vk_fields.get(4)!.as_list()!.get(i)!.as_list()!.len();
+        j++
+      ) {
+        vkDelta2Elem.push(
+          BigInt(
+            vk_fields
+              .get(4)!
+              .as_list()!
+              .get(i)!
+              .as_list()!
+              .get(j)!
+              .as_integer()!
+              .to_str()
+          )
+        );
+      }
+      vkDelta2.push(vkDelta2Elem);
+    }
     vk_template.vkDelta2 = vkDelta2;
 
-    const vkAlphabeta12 = [[[BigInt(0)]]];
+    const vkAlphabeta12 = [];
+    for (var i = 0; i < vk_fields.get(5)!.as_list()!.len(); i++) {
+      const vkAlphabeta12Elem = [];
+      for (
+        var j = 0;
+        j < vk_fields.get(5)!.as_list()!.get(i)!.as_list()!.len();
+        j++
+      ) {
+        const vkAlphabeta12ElemElem = [];
+        for (
+          var k = 0;
+          k <
+          vk_fields
+            .get(5)!
+            .as_list()!
+            .get(i)!
+            .as_list()!
+            .get(j)!
+            .as_list()!
+            .len();
+          k++
+        ) {
+          vkAlphabeta12ElemElem.push(
+            BigInt(
+              vk_fields
+                .get(5)!
+                .as_list()!
+                .get(i)!
+                .as_list()!
+                .get(j)!
+                .as_list()!
+                .get(k)!
+                .as_integer()!
+                .to_str()
+            )
+          );
+        }
+        vkAlphabeta12Elem.push(vkAlphabeta12ElemElem);
+      }
+      vkAlphabeta12.push(vkAlphabeta12Elem);
+    }
     vk_template.vkAlphabeta12 = vkAlphabeta12;
 
     const ic = [];
     for (var i = 0; i < vk_fields.get(6)!.as_list()!.len(); i++) {
-      const icElem = uncompressedG1(
-        Buffer.from(vk_fields.get(6)!.as_list()!.get(i)!.as_bytes()!).toString(
-          "hex"
-        )
-      );
+      const icElem = [];
+      for (
+        var j = 0;
+        j < vk_fields.get(6)!.as_list()!.get(i)!.as_list()!.len();
+        j++
+      ) {
+        icElem.push(
+          BigInt(
+            vk_fields
+              .get(6)!
+              .as_list()!
+              .get(i)!
+              .as_list()!
+              .get(j)!
+              .as_integer()!
+              .to_str()
+          )
+        );
+      }
       ic.push(icElem);
     }
     vk_template.IC = ic;
-
-    result.vkey = vk_template;
 
     // Get the first field element of RdmProof
     // Then get innter PlutusList from the PlutusData Constructor representing RdmProof
@@ -310,17 +496,47 @@ export class MastermindDatum {
 
     const rdm_proof_fields = fields.get(9).as_constr_plutus_data()!.data();
 
-    const piA = uncompressedG1(
-      Buffer.from(rdm_proof_fields.get(0)!.as_bytes()!).toString("hex")
-    );
+    const piA = [];
+    for (var i = 0; i < rdm_proof_fields.get(0)!.as_list()!.len(); i++) {
+      piA.push(
+        BigInt(
+          rdm_proof_fields.get(0)!.as_list()!.get(i)!.as_integer()!.to_str()
+        )
+      );
+    }
     proof.piA = piA;
-    const piB = uncompressedG2(
-      Buffer.from(rdm_proof_fields.get(1)!.as_bytes()!).toString("hex")
-    );
+    const piB = [];
+    for (var i = 0; i < rdm_proof_fields.get(1)!.as_list()!.len(); i++) {
+      const piBElem = [];
+      for (
+        var j = 0;
+        j < rdm_proof_fields.get(1)!.as_list()!.get(i)!.as_list()!.len();
+        j++
+      ) {
+        piBElem.push(
+          BigInt(
+            rdm_proof_fields
+              .get(1)!
+              .as_list()!
+              .get(i)!
+              .as_list()!
+              .get(j)!
+              .as_integer()!
+              .to_str()
+          )
+        );
+      }
+      piB.push(piBElem);
+    }
     proof.piB = piB;
-    const piC = uncompressedG1(
-      Buffer.from(rdm_proof_fields.get(2)!.as_bytes()!).toString("hex")
-    );
+    const piC = [];
+    for (var i = 0; i < rdm_proof_fields.get(2)!.as_list()!.len(); i++) {
+      piC.push(
+        BigInt(
+          rdm_proof_fields.get(2)!.as_list()!.get(i)!.as_integer()!.to_str()
+        )
+      );
+    }
     proof.piC = piC;
 
     result.proof = proof;
@@ -380,11 +596,13 @@ export class MastermindDatum {
 
     const hash = createHash("sha256").update(concatenated).digest("hex");
 
+    this.hashSol = BigInt("0x" + hash.substring(2));
+
     try {
       const inputs = {
         pubNumBlacks: this.blackPegs,
         pubNumWhites: this.whitePegs,
-        pubSolnHash: BigInt("0x" + hash.substring(2)).toString(10),
+        pubSolnHash: this.hashSol,
         privSalt: randomSalt,
         pubGuessA: this.guesses[0],
         pubGuessB: this.guesses[1],
@@ -398,8 +616,8 @@ export class MastermindDatum {
       console.log(inputs);
       const { proof }: { proof: Proof } = await snarkjs.groth16.fullProve(
         inputs,
-        "/mastermind.wasm",
-        "/mastermind.pk"
+        `${process.env.NEXT_PUBLIC_HYDRA_BACKEND}/mastermind.wasm`,
+        `${process.env.NEXT_PUBLIC_HYDRA_BACKEND}/mastermind.pk`
       );
       console.log("Proof: ", proof);
       this.proof = {
@@ -407,10 +625,19 @@ export class MastermindDatum {
         piB: proof.pi_b.map((e1) => e1.map((e2) => BigInt(e2))),
         piC: proof.pi_c.map((e) => BigInt(e)),
       };
-      this.hashSol = BigInt("0x" + hash.substring(2));
     } catch (e) {
       throw new Error("Not proof");
     }
+  }
+
+  public getSnarkProof() {
+    if (this.proof === null) return null;
+
+    return {
+      pi_a: this.proof.piA.map((e) => e.toString()),
+      pi_b: this.proof.piB.map((e1) => e1.map((e2) => e2.toString())),
+      pi_c: this.proof.piC.map((e) => e.toString()),
+    };
   }
 
   public setExpirationTime(slot: number) {
@@ -457,122 +684,4 @@ function dec2bitArray(dec: any, length: number) {
   }
 
   return Buffer.from(result);
-}
-
-async function compressedG1(point: Array<string | bigint>) {
-  const curve = await ff.getCurveFromName("bls12381");
-
-  const result = bb.toBufferBE(BigInt(point[0]), 48);
-  const COMPRESSED = 0b10000000;
-  const INFINITY = 0b01000000;
-  const YBIT = 0b00100000;
-
-  result[0] = result[0] | COMPRESSED;
-
-  if (BigInt(point[2]) !== BigInt(1)) {
-    result[0] = result[0] | INFINITY;
-  } else {
-    const F = curve.G1.F;
-
-    const x = F.fromObject(BigInt(point[0]));
-
-    const x3b = F.add(F.mul(F.square(x), x), curve.G1.b);
-    const y1 = F.toObject(F.sqrt(x3b));
-    const y2 = F.toObject(F.neg(F.sqrt(x3b)));
-
-    const y = BigInt(point[1]);
-
-    if (y1 > y2 && y > y2) {
-      result[0] = result[0] | YBIT;
-    } else if (y1 < y2 && y > y1) {
-      result[0] = result[0] | YBIT;
-    }
-  }
-
-  return result.toString("hex");
-}
-
-async function compressedG2(point: Array<Array<string | bigint>>) {
-  const curve = await ff.getCurveFromName("bls12381");
-
-  const result = Buffer.concat([
-    bb.toBufferBE(BigInt(point[0][1]), 48),
-    bb.toBufferBE(BigInt(point[0][0]), 48),
-  ]);
-  const COMPRESSED = 0b10000000;
-  const INFINITY = 0b01000000;
-  const YBIT = 0b00100000;
-
-  result[0] = result[0] | COMPRESSED;
-
-  if (BigInt(point[2][0]) !== BigInt(1)) {
-    result[0] = result[0] | INFINITY;
-  } else {
-    const F = curve.G2.F;
-
-    const x = F.fromObject(point[0].map((item) => BigInt(item)));
-
-    // console.log("x", x);
-
-    const x3b = F.add(F.mul(F.square(x), x), curve.G2.b);
-    const y1 = F.toObject(F.sqrt(x3b));
-    const y2 = F.toObject(F.neg(F.sqrt(x3b)));
-    // console.log("y1", y1);
-    // console.log("y2", y2);
-    // console.log("point", point[1]);
-
-    const y = point[1].map((item) => BigInt(item));
-
-    if (greaterThan(y1, y2) && greaterThan(y, y2)) {
-      result[0] = result[0] | YBIT;
-    } else if (greaterThan(y2, y1) && greaterThan(y, y1)) {
-      result[0] = result[0] | YBIT;
-    }
-  }
-  return result.toString("hex");
-}
-
-function greaterThan(a: Array<BigInt>, b: Array<BigInt>) {
-  if (a[1] > b[1]) {
-    return true;
-  } else if (a[1] === b[1] && a[0] > b[0]) {
-    return true;
-  }
-  return false;
-}
-
-function uncompressedG1(point: string) {
-  const COMPRESSED = 0b10000000;
-  const INFINITY = 0b01000000;
-  const YBIT = 0b00100000;
-
-  const buffer = Buffer.from(point, "hex");
-
-  if ((buffer[0] & COMPRESSED) === 0) {
-    throw new Error("Invalid format");
-  }
-
-  if ((buffer[0] & INFINITY) !== 0) {
-    return [BigInt(1), BigInt(1), BigInt(0)];
-  }
-
-  return [BigInt(1), BigInt(1), BigInt(0)]; // TODO
-}
-
-function uncompressedG2(point: string) {
-  const COMPRESSED = 0b10000000;
-  const INFINITY = 0b01000000;
-  const YBIT = 0b00100000;
-
-  const buffer = Buffer.from(point, "hex");
-
-  if ((buffer[0] & COMPRESSED) === 0) {
-    throw new Error("Invalid format");
-  }
-
-  return [
-    [BigInt(1), BigInt(1)],
-    [BigInt(1), BigInt(1)],
-    [BigInt(0), BigInt(0)],
-  ]; // TODO
 }

@@ -12,8 +12,7 @@ export interface RdmProof {
   piC: bigint[];
 }
 
-
-export type VerficationKey = {
+export type VerificationKey = {
   nPublic: number;
   vk_alpha_1: Array<string>;
   vk_beta_2: Array<Array<string>>;
@@ -21,8 +20,9 @@ export type VerficationKey = {
   vk_delta_2: Array<Array<string>>;
   vk_alphabeta_12: Array<Array<Array<string>>>;
   IC: Array<Array<string>>;
+  curve: string;
+  protocol: string;
 };
-
 
 export type VerificationKeyDatum = {
   nPublic: number;
@@ -32,4 +32,6 @@ export type VerificationKeyDatum = {
   vkDelta2: Array<Array<bigint>>;
   vkAlphabeta12: Array<Array<Array<bigint>>>;
   IC: Array<Array<bigint>>;
+  curve: string;
+  protocol: string;
 };

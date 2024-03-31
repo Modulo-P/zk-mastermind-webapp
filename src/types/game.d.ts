@@ -15,6 +15,7 @@ export interface Game {
   state: "CREATED" | "STARTED" | "FINISHED";
   turns: Array<Turn>;
   rows?: Array<Row>;
+  expirationTime: string;
 }
 
 export type Turn = {
@@ -28,6 +29,7 @@ export type Turn = {
   datum: string;
   txHash: string;
   outputIndex: number;
+  expirationTime: string;
 };
 
 export type Row = {
