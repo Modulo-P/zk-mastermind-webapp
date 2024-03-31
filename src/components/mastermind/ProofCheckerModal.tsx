@@ -1,27 +1,22 @@
 import { MastermindDatum } from "@/services/mastermind";
-import {
-  Box,
-  Button,
-  Center,
-  Modal,
-  ModalBody,
-  ModalCloseButton,
-  ModalContent,
-  ModalFooter,
-  ModalHeader,
-  ModalOverlay,
-  useDisclosure,
-} from "@chakra-ui/react";
 import ProofChecker from "./ProofChecker";
 import { useEffect, useState } from "react";
 import { PiPiBold } from "react-icons/pi";
+import useDisclosure from "@/hooks/use-disclosure";
+import { Button, Modal } from "flowbite-react";
+import { Space_Mono } from "next/font/google";
+
+const mainFont = Space_Mono({
+  weight: ["400", "700"],
+  subsets: ["latin"],
+});
 
 type Props = {
   datum: MastermindDatum | null;
 };
 
 export default function ProofCheckerModal({ datum }: Props) {
-  const [check, setCheck] = useState<boolean>(false);
+  const [check, setCheck] = useState<boolean>(true);
   const { isOpen, onClose, onOpen } = useDisclosure();
   const [checkerComponent, setCheckerComponent] = useState<JSX.Element | null>(
     null
@@ -37,21 +32,19 @@ export default function ProofCheckerModal({ datum }: Props) {
     <>
       <Button
         type="button"
-        height={"50px"}
-        width={"50px"}
-        colorScheme={!datum ? "gray" : check ? "green" : "red"}
+        color={!datum ? "gray" : check ? "green" : "red"}
         onClick={() => datum && onOpen()}
       >
         <PiPiBold size={"15px"} />
       </Button>
-      <Box display={"none"}>{checkerComponent}</Box>
-      <Modal isOpen={isOpen} onClose={onClose} isCentered size={"full"}>
-        <ModalOverlay />
-        <ModalContent>
-          <ModalHeader fontSize={"4xl"}>Info</ModalHeader>
-          <ModalCloseButton />
-          <ModalBody>{datum && checkerComponent}</ModalBody>
-        </ModalContent>
+      <div className="hidden">{checkerComponent}</div>
+      <Modal
+        className={`${mainFont.className} `}
+        show={isOpen}
+        onClose={onClose}
+      >
+        <Modal.Header>Info</Modal.Header>
+        <Modal.Body>{datum && checkerComponent}</Modal.Body>
       </Modal>
     </>
   );

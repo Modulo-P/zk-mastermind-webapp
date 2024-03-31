@@ -69,6 +69,7 @@ export default function useGame({ id }: { id: number }) {
             priorRow = result.rows[i / 2 - 1];
             priorRow.blackPegs = turn.blackPegs;
             priorRow.whitePegs = turn.whitePegs;
+            priorRow.datum = turn.datum;
           }
 
           row = {
@@ -86,7 +87,7 @@ export default function useGame({ id }: { id: number }) {
                 : false,
             blackPegs: 0,
             whitePegs: 0,
-            datum: turn.datum,
+            datum: null,
           };
           result.rows[i / 2] = row;
         } else if (i !== MAX_TURNS) {
@@ -100,7 +101,7 @@ export default function useGame({ id }: { id: number }) {
                 : false,
             blackPegs: turn.blackPegs,
             whitePegs: turn.whitePegs,
-            datum: turn.datum,
+            datum: null,
           };
         } else {
           const priorRow = result.rows[i / 2 - 1];

@@ -1,7 +1,9 @@
-import ColorRow from "./color-row";
-import { use, useEffect, useState } from "react";
-import { ColorSchema, MastermindDatum } from "@/services/mastermind";
+import { MastermindDatum } from "@/services/mastermind";
 import { Row } from "@/types/game";
+import * as CSL from "@emurgo/cardano-serialization-lib-nodejs";
+import { useEffect, useState } from "react";
+import ProofCheckerModal from "./ProofCheckerModal";
+import ColorRow from "./color-row";
 
 type Props = {
   row: Row;
@@ -61,7 +63,13 @@ export default function GameRow({ row, updateGameRow }: Props) {
         </div>
       </div>
       <div className="flex items-center">
-        {/* <ProofCheckerModal datum={rowState.datum} /> */}
+        <ProofCheckerModal
+          datum={
+            row.datum
+              ? MastermindDatum.fromCsl(CSL.PlutusData.from_hex(row.datum))
+              : null
+          }
+        />
       </div>
     </div>
   );

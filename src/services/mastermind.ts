@@ -617,6 +617,16 @@ export class MastermindDatum {
     }
   }
 
+  public getSnarkProof() {
+    if (this.proof === null) return null;
+
+    return {
+      pi_a: this.proof.piA.map((e) => e.toString()),
+      pi_b: this.proof.piB.map((e1) => e1.map((e2) => e2.toString())),
+      pi_c: this.proof.piC.map((e) => e.toString()),
+    };
+  }
+
   public setExpirationTime(slot: number) {
     this.expirationTime = slot * 1000;
   }

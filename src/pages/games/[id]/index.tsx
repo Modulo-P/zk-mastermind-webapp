@@ -2,24 +2,18 @@ import ClaimButton from "@/components/game/claim-button";
 import ClueForm from "@/components/game/clue-form";
 import GuessButton from "@/components/game/guess-button";
 import Layout from "@/components/layout";
+import ProofCheckerModal from "@/components/mastermind/ProofCheckerModal";
 import Board from "@/components/mastermind/board";
 import useGame from "@/hooks/use-game";
 import useGameTransaction from "@/hooks/use-game-transaction";
 import useHydra from "@/hooks/use-hydra";
 import useHydraWallet from "@/hooks/use-hydra-wallet";
 import useTransactionLifecycle from "@/hooks/use-transaction-lifecyle";
-import {
-  addUTxOInputs,
-  toValue,
-  txBuilderConfig,
-  unixToSlot,
-} from "@/services/blockchain-utils";
-import { plutusScript } from "@/services/mastermind";
-import * as CSL from "@emurgo/cardano-serialization-lib-nodejs";
-import { keepRelevant, resolvePaymentKeyHash } from "@meshsdk/core";
+import { MastermindDatum } from "@/services/mastermind";
 import axios, { AxiosError } from "axios";
 import { useRouter } from "next/router";
 import { ReactElement, useEffect } from "react";
+import * as CSL from "@emurgo/cardano-serialization-lib-nodejs";
 
 export default function Game() {
   const router = useRouter();
@@ -98,12 +92,12 @@ export default function Game() {
     end,
     findHydraUtxo,
     game,
-    game?.rows,
     hydraUtxos,
     hydraWallet,
     hydraWalletAddress,
     priorGameRow,
     router,
+    waitTransactionConfirmation,
   ]);
 
   return (
@@ -129,6 +123,16 @@ export default function Game() {
                 </>
               )}
             </p>
+            {game && (
+              <div className="flex flex-row gap-4">
+                <div>Initial proof:</div>
+                <ProofCheckerModal
+                  datum={MastermindDatum.fromCsl(
+                    CSL.PlutusData.from_hex(game.turns[0].datum)
+                  )}
+                />
+              </div>
+            )}
             <p className="text-xs">TIP: click to change the color</p>
             {game?.rows && <Board id={game.id} readonly={false} />}
           </div>
