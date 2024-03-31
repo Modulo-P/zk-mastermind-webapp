@@ -1,10 +1,9 @@
-import { MastermindDatum } from "@/services/mastermind";
+import { MastermindDatum, MastermindGame } from "@/services/mastermind";
 import { Proof } from "@/types/zk";
 import { Label, TextInput, Textarea } from "flowbite-react";
-import { useCallback, useEffect, useState } from "react";
-import vkJson from "../../services/vk.json";
-import ColorRow from "./color-row";
+import { useEffect, useState } from "react";
 import { FaCheck, FaTimes } from "react-icons/fa";
+import ColorRow from "./color-row";
 
 const snarkjs = require("snarkjs");
 
@@ -30,49 +29,37 @@ export default function ProofChecker({ datum, setCheckCB }: Props) {
   );
   const [check, setCheck] = useState<boolean>(true);
 
-  const handleCheckButton = useCallback(async () => {
-    console.log("check");
-    console.log("proof", datum.proof);
-    console.log("vkJson", vkJson);
-
-    console.log("Public signals", [
-      solutionHash,
-      colorSequence[0],
-      colorSequence[1],
-      colorSequence[2],
-      colorSequence[3],
-      blackPegs,
-      whitePegs,
-      solutionHash,
-    ]);
-
-    if (solutionHash === "" || !datum.proof) {
-      return;
-    }
-
-    try {
-      const result = await snarkjs.groth16.verify(
-        vkJson,
-        [
-          solutionHash,
-          colorSequence[0].toString(),
-          colorSequence[1].toString(),
-          colorSequence[2].toString(),
-          colorSequence[3].toString(),
-          blackPegs,
-          whitePegs,
-          solutionHash,
-        ],
-        proof
-      );
-      console.log("result", result);
-      setCheck(result);
-      if (setCheckCB) {
-        setCheckCB(result);
+  useEffect(() => {
+    const go = async () => {
+      if (solutionHash === "" || !datum.proof || !MastermindGame.snarkVk) {
+        return;
       }
-    } catch (e) {
-      console.error(e);
-    }
+
+      try {
+        const result = await snarkjs.groth16.verify(
+          MastermindGame.snarkVk,
+          [
+            solutionHash,
+            colorSequence[0].toString(),
+            colorSequence[1].toString(),
+            colorSequence[2].toString(),
+            colorSequence[3].toString(),
+            blackPegs,
+            whitePegs,
+            solutionHash,
+          ],
+          proof
+        );
+        console.log("result", result);
+        setCheck(result);
+        if (setCheckCB) {
+          setCheckCB(result);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    go();
   }, [
     datum.proof,
     solutionHash,
@@ -82,10 +69,6 @@ export default function ProofChecker({ datum, setCheckCB }: Props) {
     proof,
     setCheckCB,
   ]);
-
-  useEffect(() => {
-    handleCheckButton();
-  }, [handleCheckButton]);
 
   return (
     <>

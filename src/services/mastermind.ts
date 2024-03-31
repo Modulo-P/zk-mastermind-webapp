@@ -1,19 +1,14 @@
 import {
   Proof,
   RdmProof,
-  PublicSignals,
-  VerficationKey,
+  VerificationKey,
   VerificationKeyDatum,
 } from "@/types/zk";
-import { Data, PlutusScript } from "@meshsdk/core";
-import vkJson from "./vk.json";
-import mastermindScript from "./plutus.json";
 import * as CSL from "@emurgo/cardano-serialization-lib-nodejs";
-const snarkjs = require("snarkjs");
-const circomlibjs = require("circomlibjs");
-import * as bigintBuffer from "bigint-buffer";
-import { rmdir } from "fs";
+import { Data, PlutusScript } from "@meshsdk/core";
+import axios from "axios";
 import { createHash } from "crypto";
+const snarkjs = require("snarkjs");
 
 export interface ColorSchema {
   color: string;
@@ -61,16 +56,42 @@ export const colorSchema: ColorSchema[] = [
   },
 ];
 
-export const plutusScript: PlutusScript = {
-  version: "V2",
-  code: mastermindScript.cborHex,
-};
+export class MastermindGame {
+  static vk: VerificationKeyDatum | null = null;
+  static snarkVk: VerificationKey | null = null;
+  static plutusScript: PlutusScript | null = null;
+
+  static _initialized = (async () => {
+    const vk: VerificationKey = (
+      await axios.get(`${process.env.NEXT_PUBLIC_HYDRA_BACKEND}/vk.json`)
+    ).data;
+
+    MastermindGame.snarkVk = vk;
+
+    let result = {} as VerificationKeyDatum;
+    result.nPublic = Number(vk.nPublic);
+    result.vkAlpha1 = vk.vk_alpha_1.map((x) => BigInt(x));
+    result.vkBeta2 = vk.vk_beta_2.map((x) => x.map((y) => BigInt(y)));
+    result.vkGamma2 = vk.vk_gamma_2.map((x) => x.map((y) => BigInt(y)));
+    result.vkDelta2 = vk.vk_delta_2.map((x) => x.map((y) => BigInt(y)));
+    result.vkAlphabeta12 = vk.vk_alphabeta_12.map((x) =>
+      x.map((y) => y.map((z) => BigInt(z)))
+    );
+    result.IC = vk.IC.map((x) => x.map((y) => BigInt(y)));
+    result.protocol = vk.protocol;
+    result.curve = vk.curve;
+
+    MastermindGame.vk = result;
+
+    MastermindGame.plutusScript = (
+      await axios.get(`${process.env.NEXT_PUBLIC_HYDRA_BACKEND}/plutus.json`)
+    ).data;
+  })();
+}
 
 // Reference: https://github.com/Emurgo/cardano-serialization-lib/blob/master/rust/src/plutus.rs
 
 export class MastermindDatum {
-  private vkey: VerificationKeyDatum;
-
   constructor(
     public codeMaster: string,
     public codeBreaker: string,
@@ -82,24 +103,19 @@ export class MastermindDatum {
     public expirationTime: number,
     public proof: RdmProof | null = null
   ) {
-    // Set verification key values from vk.json
-    const vk: VerficationKey = vkJson;
-    this.vkey = {} as VerificationKeyDatum;
-    this.vkey.nPublic = Number(vk.nPublic);
-    this.vkey.vkAlpha1 = vk.vk_alpha_1.map((x) => BigInt(x));
-    this.vkey.vkBeta2 = vk.vk_beta_2.map((x) => x.map((y) => BigInt(y)));
-    this.vkey.vkGamma2 = vk.vk_gamma_2.map((x) => x.map((y) => BigInt(y)));
-    this.vkey.vkDelta2 = vk.vk_delta_2.map((x) => x.map((y) => BigInt(y)));
-    this.vkey.vkAlphabeta12 = vk.vk_alphabeta_12.map((x) =>
-      x.map((y) => y.map((z) => BigInt(z)))
-    );
-    this.vkey.IC = vk.IC.map((x) => x.map((y) => BigInt(y)));
+    async function loadVk(self: MastermindDatum) {}
+
+    loadVk(this);
   }
 
   // Enocde the Mastermind PlutusData
   public toCSL(): CSL.PlutusData {
     if (this.proof === null) {
       throw new Error("Proof is not set");
+    }
+
+    if (MastermindGame.vk === null) {
+      throw new Error("Verification Key is not set");
     }
 
     // Create a Plutus List
@@ -145,12 +161,12 @@ export class MastermindDatum {
 
     vkey.add(
       CSL.PlutusData.new_integer(
-        CSL.BigInt.from_str(this.vkey.nPublic.toString())
+        CSL.BigInt.from_str(MastermindGame.vk.nPublic.toString())
       )
     );
 
     const vkAlpha1 = CSL.PlutusList.new();
-    this.vkey.vkAlpha1.forEach((vk) => {
+    MastermindGame.vk.vkAlpha1.forEach((vk) => {
       vkAlpha1.add(
         CSL.PlutusData.new_integer(CSL.BigInt.from_str(vk.toString()))
       );
@@ -158,7 +174,7 @@ export class MastermindDatum {
     vkey.add(CSL.PlutusData.new_list(vkAlpha1));
 
     const vkBeta2 = CSL.PlutusList.new();
-    this.vkey.vkBeta2.forEach((vk) => {
+    MastermindGame.vk.vkBeta2.forEach((vk) => {
       const vkList = CSL.PlutusList.new();
       vk.forEach((vkElem) => {
         vkList.add(
@@ -170,7 +186,7 @@ export class MastermindDatum {
     vkey.add(CSL.PlutusData.new_list(vkBeta2));
 
     const vkGamma2 = CSL.PlutusList.new();
-    this.vkey.vkGamma2.forEach((vk) => {
+    MastermindGame.vk.vkGamma2.forEach((vk) => {
       const vkList = CSL.PlutusList.new();
       vk.forEach((vkElem) => {
         vkList.add(
@@ -182,7 +198,7 @@ export class MastermindDatum {
     vkey.add(CSL.PlutusData.new_list(vkGamma2));
 
     const vkDelta2 = CSL.PlutusList.new();
-    this.vkey.vkDelta2.forEach((vk) => {
+    MastermindGame.vk.vkDelta2.forEach((vk) => {
       const vkList = CSL.PlutusList.new();
       vk.forEach((vkElem) => {
         vkList.add(
@@ -194,7 +210,7 @@ export class MastermindDatum {
     vkey.add(CSL.PlutusData.new_list(vkDelta2));
 
     const vkAlphabeta12 = CSL.PlutusList.new();
-    this.vkey.vkAlphabeta12.forEach((vk) => {
+    MastermindGame.vk.vkAlphabeta12.forEach((vk) => {
       const vkList = CSL.PlutusList.new();
       vk.forEach((vkElem) => {
         const vkElemList = CSL.PlutusList.new();
@@ -212,7 +228,7 @@ export class MastermindDatum {
     vkey.add(CSL.PlutusData.new_list(vkAlphabeta12));
 
     const ic = CSL.PlutusList.new();
-    this.vkey.IC.forEach((icElem) => {
+    MastermindGame.vk.IC.forEach((icElem) => {
       const icElemList = CSL.PlutusList.new();
       icElem.forEach((icElemElem) => {
         icElemList.add(
@@ -312,7 +328,6 @@ export class MastermindDatum {
     result.blackPegs = Number(fields.get(4)!.as_integer()!.to_str());
     result.whitePegs = Number(fields.get(5)!.as_integer()!.to_str());
     result.currentTurn = Number(fields.get(6)!.as_integer()!.to_str());
-    console.log(fields.get(7));
     result.expirationTime = Number(fields.get(7)!.as_integer()!.to_str());
 
     // Create a Mastermind data object with empty values
@@ -473,8 +488,6 @@ export class MastermindDatum {
     }
     vk_template.IC = ic;
 
-    result.vkey = vk_template;
-
     // Get the first field element of RdmProof
     // Then get innter PlutusList from the PlutusData Constructor representing RdmProof
 
@@ -603,8 +616,8 @@ export class MastermindDatum {
       console.log(inputs);
       const { proof }: { proof: Proof } = await snarkjs.groth16.fullProve(
         inputs,
-        "/mastermind.wasm",
-        "/mastermind.pk"
+        `${process.env.NEXT_PUBLIC_HYDRA_BACKEND}/mastermind.wasm`,
+        `${process.env.NEXT_PUBLIC_HYDRA_BACKEND}/mastermind.pk`
       );
       console.log("Proof: ", proof);
       this.proof = {

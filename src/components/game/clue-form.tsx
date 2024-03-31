@@ -1,10 +1,10 @@
-import { Label, TextInput } from "flowbite-react";
-import React, { useEffect } from "react";
-import ClueButton from "./clue-button";
 import useGame from "@/hooks/use-game";
 import { GameSecret } from "@/types/game";
+import { Label, TextInput } from "flowbite-react";
+import React, { useEffect } from "react";
 import ColorRow from "../mastermind/color-row";
 import CancelButton from "./cancel-button";
+import ClueButton from "./clue-button";
 
 type ClueFormProps = {
   id: number;
@@ -21,7 +21,7 @@ export default function ClueForm({ id }: ClueFormProps) {
   ) as GameSecret;
 
   useEffect(() => {
-    if (game && game.currentTurn % 2 === 0 && game.currentTurn !== 10) {
+    if (game && game.currentTurn % 2 === 0 && game.currentTurn !== 20) {
       setWhitePegs(null);
       setBlackPegs(null);
     }
@@ -33,7 +33,7 @@ export default function ClueForm({ id }: ClueFormProps) {
     if (
       (currentGameRow.whitePegs !== (whitePegs ?? 0) ||
         currentGameRow.blackPegs !== (blackPegs ?? 0)) &&
-      game?.currentTurn !== 10
+      game?.currentTurn !== 20
     ) {
       updateCurrentGameRow({
         ...currentGameRow,

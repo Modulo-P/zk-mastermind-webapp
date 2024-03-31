@@ -3,6 +3,7 @@ import useGame from "@/hooks/use-game";
 import useGameTransaction from "@/hooks/use-game-transaction";
 import useHydraWallet from "@/hooks/use-hydra-wallet";
 import useTransactionLifecycle from "@/hooks/use-transaction-lifecyle";
+import { MastermindGame } from "@/services/mastermind";
 import { Game, Turn } from "@/types/game";
 import axios, { AxiosError } from "axios";
 import { Button } from "flowbite-react";
@@ -116,7 +117,8 @@ export default function GuessButton({ game, setInfoMessage }: Props) {
         !game.rows ||
         !currentGameRow ||
         loading ||
-        buttonText !== "Submit guess"
+        buttonText !== "Submit guess" ||
+        !MastermindGame.plutusScript
       }
     >
       {loading ? message : buttonText}

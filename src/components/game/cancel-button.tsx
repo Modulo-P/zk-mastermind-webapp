@@ -1,11 +1,12 @@
 import useGameTransaction from "@/hooks/use-game-transaction";
 import useHydraWallet from "@/hooks/use-hydra-wallet";
 import useTransactionLifecycle from "@/hooks/use-transaction-lifecyle";
+import { MastermindGame } from "@/services/mastermind";
 import { Game, Row } from "@/types/game";
-import { Button } from "flowbite-react";
-import React, { useCallback } from "react";
 import axios from "axios";
+import { Button } from "flowbite-react";
 import { useRouter } from "next/router";
+import { useCallback } from "react";
 
 export default function CancelButton({
   game,
@@ -34,7 +35,8 @@ export default function CancelButton({
       !game ||
       !game.rows ||
       !hydraWalletAddress ||
-      !currentGameRow
+      !currentGameRow ||
+      !MastermindGame.plutusScript
     )
       return;
 

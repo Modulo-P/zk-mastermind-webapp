@@ -10,10 +10,10 @@ import useHydra from "@/hooks/use-hydra";
 import useHydraWallet from "@/hooks/use-hydra-wallet";
 import useTransactionLifecycle from "@/hooks/use-transaction-lifecyle";
 import { MastermindDatum } from "@/services/mastermind";
+import * as CSL from "@emurgo/cardano-serialization-lib-nodejs";
 import axios, { AxiosError } from "axios";
 import { useRouter } from "next/router";
 import { ReactElement, useEffect } from "react";
-import * as CSL from "@emurgo/cardano-serialization-lib-nodejs";
 
 export default function Game() {
   const router = useRouter();
@@ -33,7 +33,7 @@ export default function Game() {
         game &&
         priorGameRow &&
         game.codeMasterAddress === hydraWalletAddress &&
-        game.currentTurn === 10 &&
+        game.currentTurn === 20 &&
         priorGameRow.blackPegs < 4
       ) {
         winnerAddress = game.codeMaster;

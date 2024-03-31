@@ -1,6 +1,3 @@
-import { useCallback, useState } from "react";
-import useHydraWallet from "./use-hydra-wallet";
-import * as CSL from "@emurgo/cardano-serialization-lib-nodejs";
 import {
   addUTxOInputs,
   dataCost,
@@ -9,17 +6,21 @@ import {
   txBuilderConfig,
   unixToSlot,
 } from "@/services/blockchain-utils";
+import { MastermindDatum, MastermindGame } from "@/services/mastermind";
+import { Game, GameSecret, Row } from "@/types/game";
+import * as CSL from "@emurgo/cardano-serialization-lib-nodejs";
 import {
   UTxO,
   keepRelevant,
   resolvePaymentKeyHash,
   resolvePlutusScriptAddress,
 } from "@meshsdk/core";
-import { MastermindDatum, plutusScript } from "@/services/mastermind";
-import { Game, GameSecret, Row, Turn } from "@/types/game";
+import { useCallback } from "react";
 import useHydra from "./use-hydra";
+import useHydraWallet from "./use-hydra-wallet";
 
 export default function useGameTransaction() {
+  const plutusScript = MastermindGame.plutusScript;
   const { hydraWallet, hydraWalletAddress, hydraProvider, hydraUtxos } =
     useHydraWallet();
   const { findHydraUtxo } = useHydra();
@@ -38,7 +39,8 @@ export default function useGameTransaction() {
         hydraWalletAddress &&
         !secretCode.some((s) => s === undefined) &&
         hydraWallet &&
-        adaAmount > 0
+        adaAmount > 0 &&
+        plutusScript
       ) {
         const txBuilder = CSL.TransactionBuilder.new(txBuilderConfig);
 
@@ -119,7 +121,7 @@ export default function useGameTransaction() {
           CSL.Address.from_bech32(hydraWalletAddress)
         );
 
-        console.log("Tx ", txBuilder.build().to_hex());
+        //console.log("Tx ", txBuilder.build().to_hex());
 
         if (txBuilder.build_tx().is_valid()) {
           console.log("Transaction is valid");
@@ -137,7 +139,7 @@ export default function useGameTransaction() {
         throw new Error("Invalid parameters");
       }
     },
-    [hydraProvider, hydraUtxos, hydraWallet, hydraWalletAddress]
+    [hydraProvider, hydraUtxos, hydraWallet, hydraWalletAddress, plutusScript]
   );
 
   const end = useCallback(
@@ -152,7 +154,8 @@ export default function useGameTransaction() {
         !hydraWallet ||
         !hydraWalletAddress ||
         !game.currentDatum ||
-        !game.rows
+        !game.rows ||
+        !plutusScript
       )
         throw new Error("Invalid parameters");
 
@@ -305,7 +308,7 @@ export default function useGameTransaction() {
       try {
         const unsignedTx = cslTx.to_hex();
         const signedTx = await hydraWallet.signTx(unsignedTx, true);
-        console.log("Signed tx", signedTx);
+        // console.log("Tx ", txBuilder.build().to_hex());
         const txHash = await hydraWallet.submitTx(signedTx);
 
         return { txHash, datum };
@@ -314,7 +317,7 @@ export default function useGameTransaction() {
         throw e;
       }
     },
-    [findHydraUtxo, hydraUtxos, hydraWallet, hydraWalletAddress]
+    [findHydraUtxo, hydraUtxos, hydraWallet, hydraWalletAddress, plutusScript]
   );
 
   const guess = useCallback(
@@ -324,7 +327,8 @@ export default function useGameTransaction() {
         !hydraWalletAddress ||
         !game.currentDatum ||
         !game.rows ||
-        !currentGameRow
+        !currentGameRow ||
+        !plutusScript
       )
         throw new Error("Invalid parameters");
 
@@ -483,7 +487,7 @@ export default function useGameTransaction() {
       try {
         const unsignedTx = cslTx.to_hex();
         const signedTx = await hydraWallet.signTx(unsignedTx, true);
-        console.log("Signed tx", signedTx);
+        // console.log("Tx ", txBuilder.build().to_hex());
         const txHash = await hydraWallet.submitTx(signedTx);
 
         return { txHash, datum };
@@ -492,7 +496,7 @@ export default function useGameTransaction() {
         throw e;
       }
     },
-    [findHydraUtxo, hydraUtxos, hydraWallet, hydraWalletAddress]
+    [findHydraUtxo, hydraUtxos, hydraWallet, hydraWalletAddress, plutusScript]
   );
 
   const clue = useCallback(
@@ -511,7 +515,8 @@ export default function useGameTransaction() {
         !game ||
         !game.rows ||
         !hydraWalletAddress ||
-        !currentGameRow
+        !currentGameRow ||
+        !plutusScript
       )
         throw new Error("Invalid parameters");
 
@@ -661,7 +666,7 @@ export default function useGameTransaction() {
         throw e;
       }
     },
-    [findHydraUtxo, hydraUtxos, hydraWallet, hydraWalletAddress]
+    [findHydraUtxo, hydraUtxos, hydraWallet, hydraWalletAddress, plutusScript]
   );
 
   return { createNewGame, end, guess, clue };

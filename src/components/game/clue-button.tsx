@@ -1,25 +1,11 @@
 import useConfetti from "@/hooks/use-confetti";
 import useGame from "@/hooks/use-game";
 import useGameTransaction from "@/hooks/use-game-transaction";
-import useHydra from "@/hooks/use-hydra";
 import useHydraWallet from "@/hooks/use-hydra-wallet";
 import useTransactionLifecycle from "@/hooks/use-transaction-lifecyle";
-import {
-  addUTxOInputs,
-  toValue,
-  txBuilderConfig,
-  unixToSlot,
-} from "@/services/blockchain-utils";
-import { MastermindDatum, plutusScript } from "@/services/mastermind";
+import { MastermindGame } from "@/services/mastermind";
 import { GameSecret, Turn } from "@/types/game";
-import * as CSL from "@emurgo/cardano-serialization-lib-nodejs";
-import {
-  UTxO,
-  keepRelevant,
-  resolvePaymentKeyHash,
-  resolvePlutusScriptAddress,
-} from "@meshsdk/core";
-import axios, { AxiosError, AxiosResponse } from "axios";
+import axios, { AxiosError } from "axios";
 import { Button } from "flowbite-react";
 import { useCallback, useEffect, useState } from "react";
 
@@ -79,7 +65,8 @@ export default function ClueButton({
       !game ||
       !game.rows ||
       !hydraWalletAddress ||
-      !currentGameRow
+      !currentGameRow ||
+      !MastermindGame.plutusScript
     )
       return;
 

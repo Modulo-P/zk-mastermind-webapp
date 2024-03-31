@@ -107,6 +107,7 @@ export default function useGame({ id }: { id: number }) {
           const priorRow = result.rows[i / 2 - 1];
           priorRow.blackPegs = turn.blackPegs;
           priorRow.whitePegs = turn.whitePegs;
+          priorRow.datum = turn.datum;
         }
       } else {
         if (i % 2 === 0 && i !== MAX_TURNS) {

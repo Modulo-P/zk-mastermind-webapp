@@ -1,11 +1,12 @@
 import useGameTransaction from "@/hooks/use-game-transaction";
 import useHydraWallet from "@/hooks/use-hydra-wallet";
 import useTransactionLifecycle from "@/hooks/use-transaction-lifecyle";
+import { MastermindGame } from "@/services/mastermind";
 import { Game } from "@/types/game";
 import axios, { AxiosError } from "axios";
 import { Button } from "flowbite-react";
 import { useRouter } from "next/router";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 
 export default function CreateGameButton({
   secretCode,
@@ -101,7 +102,8 @@ export default function CreateGameButton({
         loading ||
         secretCode.some((s) => s === undefined) ||
         adaAmount <= 0 ||
-        hydraWalletAddress === undefined
+        hydraWalletAddress === undefined ||
+        !MastermindGame.plutusScript
       }
     >
       {loading ? message : "Create new game"}
