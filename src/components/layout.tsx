@@ -41,7 +41,10 @@ export default function Layout({ children }: React.PropsWithChildren) {
     const go = async () => {
       if (wallet && connected && (await wallet.getNetworkId()) !== 0) {
         toast.error("Please connect to the Cardano Testnet", {
-          theme: localStorage.getItem("theme") === "dark" ? "dark" : "light",
+          theme:
+            localStorage.getItem("flowbite-theme-mode") === "dark"
+              ? "dark"
+              : "light",
         });
         disconnect();
       }
