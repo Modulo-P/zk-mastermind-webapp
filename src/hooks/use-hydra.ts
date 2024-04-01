@@ -1,9 +1,9 @@
+import { coalesceAssets } from "@/services/blockchain-utils";
+import * as CSL from "@emurgo/cardano-serialization-lib-nodejs";
+import { Action, PlutusScript, Transaction } from "@meshsdk/core";
+import { useWallet } from "@meshsdk/react";
 import { useCallback } from "react";
 import useHydraWallet from "./use-hydra-wallet";
-import { coalesceAssets } from "@/services/blockchain-utils";
-import { Action, PlutusScript, Transaction, UTxO } from "@meshsdk/core";
-import * as CSL from "@emurgo/cardano-serialization-lib-nodejs";
-import { useWallet } from "@meshsdk/react";
 
 export default function useHydra() {
   const { wallet } = useWallet();
@@ -41,7 +41,8 @@ export default function useHydra() {
       hydraUtxos.filter(
         (utxo) =>
           utxo.output.amount.length === 1 &&
-          utxo.output.amount[0].unit === "lovelace"
+          utxo.output.amount[0].unit === "lovelace" &&
+          utxo.output.amount[0].quantity === "5000000"
       )[0],
     ]);
 
