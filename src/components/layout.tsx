@@ -32,7 +32,7 @@ export default function Layout({ children }: React.PropsWithChildren) {
   }, [connect]);
 
   useEffect(() => {
-    if (!localStorage.getItem("theme")) {
+    if (!localStorage.getItem("flowbite-theme-mode")) {
       setMode("dark");
     }
   }, [setMode]);
