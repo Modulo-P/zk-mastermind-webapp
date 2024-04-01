@@ -1,12 +1,11 @@
 "use client";
 
-import WalletBalance from "@/components/hydra/wallet-balance";
 import useConfetti from "@/hooks/use-confetti";
-import { CardanoWallet, useWallet } from "@meshsdk/react";
-import { DarkThemeToggle } from "flowbite-react";
+import { useWallet } from "@meshsdk/react";
+import { DarkThemeToggle, useThemeMode } from "flowbite-react";
 import { Space_Mono } from "next/font/google";
 import Link from "next/link";
-import { use, useEffect } from "react";
+import { useEffect } from "react";
 import Confetti from "react-confetti";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -22,6 +21,7 @@ const mainFont = Space_Mono({
 export default function Layout({ children }: React.PropsWithChildren) {
   const { width, height } = useWindowSize();
   const { confetti, setConfetti } = useConfetti();
+  const { setMode } = useThemeMode();
 
   const { connected, wallet, disconnect, connect } = useWallet();
 
@@ -30,6 +30,12 @@ export default function Layout({ children }: React.PropsWithChildren) {
       connect("eternl");
     }
   }, [connect]);
+
+  useEffect(() => {
+    if (!localStorage.getItem("theme")) {
+      setMode("dark");
+    }
+  }, [setMode]);
 
   useEffect(() => {
     const go = async () => {
