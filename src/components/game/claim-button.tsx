@@ -65,7 +65,7 @@ export default function ClaimButton({
     if (waitingForTurn) {
       setCountDownDate(
         new Date(
-          Number(game.expirationTime) + 19 * 24 * 60 * 60 * 1000
+          Number(game.expirationTime) + 19 * 24 * 60 * 60 * 1000 + 5 * 60 * 1000
         ).getTime()
       );
     }

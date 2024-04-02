@@ -206,8 +206,8 @@ export default function useGameTransaction() {
         scriptUtxo.input.outputIndex
       );
 
-      let lowerBound = unixToSlot(Date.now() - 60 * 1000);
-      let upperBound = (lowerBound + 15 * 60).toString();
+      let lowerBound = unixToSlot(Date.now() - 5 * 60 * 1000);
+      let upperBound = (lowerBound + 10 * 60).toString();
       txBuilder.set_validity_start_interval_bignum(
         CSL.BigNum.from_str(lowerBound.toString())
       );
@@ -432,8 +432,8 @@ export default function useGameTransaction() {
       // (1) ValidTime range has to be lesser or equal than 20 minutes (1200000 miliseconds)
       // (2) Expiration time has to be greater or equal than the UpperBound of the Validity range + 20 min
       if (game.currentTurn === 0) {
-        let lowerBound = unixToSlot(Date.now() - 60 * 1000);
-        let upperBound = (lowerBound + 20 * 60).toString();
+        let lowerBound = unixToSlot(Date.now() - 5 * 60 * 1000);
+        let upperBound = (lowerBound + 15 * 60).toString();
         txBuilder.set_validity_start_interval_bignum(
           CSL.BigNum.from_str(lowerBound.toString())
         );
@@ -614,8 +614,8 @@ export default function useGameTransaction() {
         // (1) ValidTime range has to be lesser or equal than 20 minutes (1200000 miliseconds)
         // (2) Expiration time has to be greater or equal than the UpperBound of the Validity range + 20 min
 
-        let lowerBound = unixToSlot(Date.now() - 60 * 1000);
-        let upperBound = (lowerBound + 15 * 60).toString();
+        let lowerBound = unixToSlot(Date.now() - 5 * 60 * 1000);
+        let upperBound = (lowerBound + 10 * 60).toString();
         txBuilder.set_validity_start_interval_bignum(
           CSL.BigNum.from_str(lowerBound.toString())
         );
