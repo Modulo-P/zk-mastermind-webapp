@@ -1,13 +1,13 @@
 "use client";
 import useCardano from "@/hooks/use-cardano";
 import useHydraWallet from "@/hooks/use-hydra-wallet";
+import { useUser } from "@/hooks/use-user";
+import { User } from "@/types/user";
 import { CardanoWallet, useWallet } from "@meshsdk/react";
+import axios from "axios";
 import { Button, TextInput } from "flowbite-react";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
-import axios from "axios";
-import { User } from "@/types/user";
-import { useUser } from "@/hooks/use-user";
 
 export default function ConnectTutorial() {
   const { connected } = useWallet();
@@ -63,10 +63,12 @@ export default function ConnectTutorial() {
       <h2 className="mt-4 text-center font-normal uppercase">
         🚀 Connect to the dApp 🚀
       </h2>
-      <p className="mt-2">Get your wallet ready to play:</p>
+      <p className="mt-2">
+        Get your <b>Preprod</b> wallet ready to play:
+      </p>
       <ul className="mt-0">
         <li>
-          Connect your Cardano wallet {connected ? "✅" : "❌"}
+          Connect your Cardano wallet (preprod) {connected ? "✅" : "❌"}
           <div className="my-2">
             <CardanoWallet />
           </div>
