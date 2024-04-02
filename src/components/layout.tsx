@@ -42,7 +42,7 @@ export default function Layout({ children }: React.PropsWithChildren) {
   useEffect(() => {
     const go = async () => {
       if (wallet && connected && (await wallet.getNetworkId()) !== 0) {
-        toast.error("Please connect to the Cardano Testnet", {
+        toast.error("Please connect to the Cardano Preprod", {
           theme:
             localStorage.getItem("flowbite-theme-mode") === "dark"
               ? "dark"
