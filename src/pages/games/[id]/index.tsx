@@ -129,7 +129,7 @@ export default function Game({
         <meta name="og:title" content="Play ZK-Mastermind on Hydra" />
         <meta
           name="og:description"
-          content={`${serverGame.codeMaster.nickname} is looking for a challenger. Can you break the code? $ADA #ZkMastermind`}
+          content={`${serverGame.codeMaster.nickname} is looking for a challenger. Can you break the code?`}
         />
         <meta
           name="og:image"
@@ -139,7 +139,7 @@ export default function Game({
         <meta name="twitter:site" content="@modp_" />
         <meta
           name="twitter:description"
-          content={`${serverGame.codeMaster.nickname} is looking for a challenger. Can you break the code? $ADA #ZkMastermind`}
+          content={`${serverGame.codeMaster.nickname} is looking for a challenger. Can you break the code?`}
         />
         <meta
           name="twitter:image"
