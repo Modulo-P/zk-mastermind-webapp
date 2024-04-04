@@ -12,6 +12,7 @@ import useTransactionLifecycle from "@/hooks/use-transaction-lifecyle";
 import { MastermindDatum } from "@/services/mastermind";
 import * as CSL from "@emurgo/cardano-serialization-lib-nodejs";
 import axios, { AxiosError } from "axios";
+import Head from "next/head";
 import { useRouter } from "next/router";
 import { ReactElement, useEffect } from "react";
 
@@ -101,93 +102,110 @@ export default function Game() {
   ]);
 
   return (
-    <div className="flex flex-col max-w-4xl mx-auto">
-      <div className="shadow border-2 ring-gray-200 dark:ring-gray-700 rounded-lg w-full flex flex-col backdrop-blur bg-gray-100 dark:bg-gray-800 px-10 py-8 mb-8">
-        <div className="prose dark:prose-invert text-center max-w-2xl mx-auto">
-          🚨IMPORTANT!!!🚨 If you like what we are doing!! Please consider
-          support us in Catalyst: 🚦
-          <a href="https://cardano.ideascale.com/c/idea/113249" target="_blank">
-            Semaphore protocol
-          </a>
-          🚦
-        </div>
-      </div>
-      <div className="shadow border-2 ring-gray-200 dark:ring-gray-700 rounded-lg w-full flex flex-col backdrop-blur bg-gray-100 dark:bg-gray-800 px-10 py-8">
-        <div className="flex flex-row gap-8 ">
-          <div className="flex flex-col prose dark:prose-invert">
-            <h2 className="text-center mb-2">Board</h2>
-            <p className="text-center my-2">
-              {game?.codeBreakerAddress && (
-                <>
-                  {game.codeMaster.nickname} 🆚 {game.codeBreaker.nickname}
-                </>
-              )}
-            </p>
-            {game && (
-              <div className="flex flex-row gap-4">
-                <div>Initial proof:</div>
-                <ProofCheckerModal
-                  datum={MastermindDatum.fromCsl(
-                    CSL.PlutusData.from_hex(game.turns[0].datum)
-                  )}
-                />
-              </div>
-            )}
-            <p className="text-xs">TIP: click to change the color</p>
-            {game?.rows && <Board id={game.id} readonly={false} />}
+    <>
+      <Head>
+        <meta name="twitter:title" content="Play Zk-Mastermind on Hydra" />
+        <meta
+          name="twitter:description"
+          content={`${game?.codeMaster} is looking for a challenger. Can you break the code?`}
+        />
+        <meta name="twitter:image" content="/img/twitter-image.png" />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Head>
+      <div className="flex flex-col max-w-4xl mx-auto">
+        <div className="shadow border-2 ring-gray-200 dark:ring-gray-700 rounded-lg w-full flex flex-col backdrop-blur bg-gray-100 dark:bg-gray-800 px-10 py-8 mb-8">
+          <div className="prose dark:prose-invert text-center max-w-2xl mx-auto">
+            🚨IMPORTANT!!!🚨 If you like what we are doing!! Please consider
+            support us in Catalyst: 🚦
+            <a
+              href="https://cardano.ideascale.com/c/idea/113249"
+              target="_blank"
+            >
+              Semaphore protocol
+            </a>
+            🚦
           </div>
-          <div className="flex flex-col flex-grow prose dark:prose-invert text-sm">
-            <h2 className="text-center ">Smart contract control</h2>
-            <p>
-              Modulo-P brings you the first-ever game to experience the speed of
-              Hydra and ZK proofs on Cardano.
-            </p>
-            {game &&
-              ((hydraWalletAddress === game.codeBreakerAddress &&
-                game.state === "STARTED") ||
-                (game.state === "CREATED" &&
-                  game.codeMasterAddress !== hydraWalletAddress)) && (
-                <div>
-                  <p>
-                    You are the code breaker 🥷. Select a sequence and send your
-                    guess to the code master. Wait until the code master give
-                    you back a clue. This clue is shield by a ZK Proof and it
-                    can&apos;t be incorrect.
-                  </p>
-                  <GuessButton
-                    game={game}
-                    setInfoMessage={(message) =>
-                      console.log("guess button", message)
-                    }
+        </div>
+        <div className="shadow border-2 ring-gray-200 dark:ring-gray-700 rounded-lg w-full flex flex-col backdrop-blur bg-gray-100 dark:bg-gray-800 px-10 py-8">
+          <div className="flex flex-row gap-8 ">
+            <div className="flex flex-col prose dark:prose-invert">
+              <h2 className="text-center mb-2">Board</h2>
+              <p className="text-center my-2">
+                {game?.codeBreakerAddress && (
+                  <>
+                    {game.codeMaster.nickname} 🆚 {game.codeBreaker.nickname}
+                  </>
+                )}
+              </p>
+              {game && (
+                <div className="flex flex-row gap-4">
+                  <div>Initial proof:</div>
+                  <ProofCheckerModal
+                    datum={MastermindDatum.fromCsl(
+                      CSL.PlutusData.from_hex(game.turns[0].datum)
+                    )}
                   />
                 </div>
               )}
-            {game &&
-              ["STARTED", "CREATED"].includes(game.state) &&
-              hydraWalletAddress === game.codeMasterAddress && (
-                <div>
+              <p className="text-xs">TIP: click to change the color</p>
+              {game?.rows && <Board id={game.id} readonly={false} />}
+            </div>
+            <div className="flex flex-col flex-grow prose dark:prose-invert text-sm">
+              <h2 className="text-center ">Smart contract control</h2>
+              <p>
+                Modulo-P brings you the first-ever game to experience the speed
+                of Hydra and ZK proofs on Cardano.
+              </p>
+              {game &&
+                ((hydraWalletAddress === game.codeBreakerAddress &&
+                  game.state === "STARTED") ||
+                  (game.state === "CREATED" &&
+                    game.codeMasterAddress !== hydraWalletAddress)) && (
+                  <div>
+                    <p>
+                      You are the code breaker 🥷. Select a sequence and send
+                      your guess to the code master. Wait until the code master
+                      give you back a clue. This clue is shield by a ZK Proof
+                      and it can&apos;t be incorrect.
+                    </p>
+                    <GuessButton
+                      game={game}
+                      setInfoMessage={(message) =>
+                        console.log("guess button", message)
+                      }
+                    />
+                  </div>
+                )}
+              {game &&
+                ["STARTED", "CREATED"].includes(game.state) &&
+                hydraWalletAddress === game.codeMasterAddress && (
+                  <div>
+                    <p>
+                      You are the code master 🧙🏻‍♀️. Wait for the code breaker.
+                      When you recieve a guess, remember to give back the
+                      correct clue. Else you won&apos;t be able to continue the
+                      game.{" "}
+                    </p>
+                    <ClueForm id={game.id} />
+                  </div>
+                )}
+              {game && game.state == "STARTED" && currentGameRow && (
+                <>
                   <p>
-                    You are the code master 🧙🏻‍♀️. Wait for the code breaker. When
-                    you recieve a guess, remember to give back the correct clue.
-                    Else you won&apos;t be able to continue the game.{" "}
+                    If your opponent doesn&apos;t respond within a time limit,
+                    you will have the right to claim the game.
                   </p>
-                  <ClueForm id={game.id} />
-                </div>
+                  <ClaimButton game={game} currentGameRow={currentGameRow} />
+                </>
               )}
-            {game && game.state == "STARTED" && currentGameRow && (
-              <>
-                <p>
-                  If your opponent doesn&apos;t respond within a time limit, you
-                  will have the right to claim the game.
-                </p>
-                <ClaimButton game={game} currentGameRow={currentGameRow} />
-              </>
-            )}
-            {game && game.state === "FINISHED" && <p>The game is finished.</p>}
+              {game && game.state === "FINISHED" && (
+                <p>The game is finished.</p>
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
 
