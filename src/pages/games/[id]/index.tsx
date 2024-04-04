@@ -10,13 +10,35 @@ import useHydra from "@/hooks/use-hydra";
 import useHydraWallet from "@/hooks/use-hydra-wallet";
 import useTransactionLifecycle from "@/hooks/use-transaction-lifecyle";
 import { MastermindDatum } from "@/services/mastermind";
+import { Game } from "@/types/game";
 import * as CSL from "@emurgo/cardano-serialization-lib-nodejs";
 import axios, { AxiosError } from "axios";
+import { GetServerSidePropsContext, InferGetServerSidePropsType } from "next";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import { ReactElement, useEffect } from "react";
 
-export default function Game() {
+export async function getServerSideProps({
+  params,
+}: GetServerSidePropsContext) {
+  if (!params || !params.id) {
+    return { notFound: true };
+  }
+
+  const res = await axios.get(
+    `${process.env.NEXT_PUBLIC_HYDRA_BACKEND}/games/?id=${params.id}`
+  );
+
+  if (res.status !== 200 || !res.data) {
+    return { notFound: true };
+  }
+
+  return { props: { game: res.data as Game } };
+}
+
+export default function Game({
+  game: serverGame,
+}: InferGetServerSidePropsType<typeof getServerSideProps>) {
   const router = useRouter();
   const { hydraWalletAddress, hydraWallet, hydraUtxos } = useHydraWallet();
   const { findHydraUtxo } = useHydra();
@@ -107,7 +129,7 @@ export default function Game() {
         <meta name="twitter:title" content="Play Zk-Mastermind on Hydra" />
         <meta
           name="twitter:description"
-          content={`${game?.codeMaster} is looking for a challenger. Can you break the code?`}
+          content={`${serverGame.codeMaster.nickname} is looking for a challenger. Can you break the code? $ADA #ZkMastermind`}
         />
         <meta name="twitter:image" content="/img/twitter-image.png" />
         <meta name="twitter:card" content="summary_large_image" />
