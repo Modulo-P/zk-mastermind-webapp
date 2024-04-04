@@ -133,7 +133,7 @@ export default function Game({
         />
         <meta
           name="twitter:image"
-          content="https://zk-mastermind.modulo-p.io/img/twitter-image.png"
+          content="https://zkmastermind.modulo-p.io/img/twitter-image.png"
         />
         <meta name="twitter:card" content="summary_large_image" />
       </Head>
