@@ -128,6 +128,10 @@ export default function Game({
       <Head>
         <meta name="og:title" content="Play ZK-Mastermind on Hydra" />
         <meta
+          name="og:description"
+          content={`${serverGame.codeMaster.nickname} is looking for a challenger. Can you break the code? $ADA #ZkMastermind`}
+        />
+        <meta
           name="og:image"
           content="https://zkmastermind.modulo-p.io/img/twitter-image.png"
         />
