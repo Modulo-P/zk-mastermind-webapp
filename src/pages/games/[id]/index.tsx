@@ -131,7 +131,10 @@ export default function Game({
           name="twitter:description"
           content={`${serverGame.codeMaster.nickname} is looking for a challenger. Can you break the code? $ADA #ZkMastermind`}
         />
-        <meta name="twitter:image" content="/img/twitter-image.png" />
+        <meta
+          name="twitter:image"
+          content="https://zk-mastermind.modulo-p.io/img/twitter-image.png"
+        />
         <meta name="twitter:card" content="summary_large_image" />
       </Head>
       <div className="flex flex-col max-w-4xl mx-auto">
