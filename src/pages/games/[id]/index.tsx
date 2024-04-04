@@ -145,7 +145,7 @@ export default function Game({
           name="twitter:image"
           content="https://zkmastermind.modulo-p.io/img/twitter-image.png"
         />
-        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:card" content="summary" />
       </Head>
       <div className="flex flex-col max-w-4xl mx-auto">
         <div className="shadow border-2 ring-gray-200 dark:ring-gray-700 rounded-lg w-full flex flex-col backdrop-blur bg-gray-100 dark:bg-gray-800 px-10 py-8 mb-8">
