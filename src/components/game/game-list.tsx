@@ -1,9 +1,10 @@
 import useHydraWallet from "@/hooks/use-hydra-wallet";
 import { Game } from "@/types/game";
-import { resolvePaymentKeyHash } from "@meshsdk/core";
-import { FlowbiteTableTheme, Table } from "flowbite-react";
+import { Button, Table } from "flowbite-react";
 import Link from "next/link";
 import { useRouter } from "next/router";
+import { FaTwitter } from "react-icons/fa";
+import { TwitterShareButton } from "react-share";
 
 export default function GameList({ games }: { games?: Game[] }) {
   const router = useRouter();
@@ -26,8 +27,9 @@ export default function GameList({ games }: { games?: Game[] }) {
                 <Table.HeadCell>My role</Table.HeadCell>
                 <Table.HeadCell>hADA</Table.HeadCell>
                 <Table.HeadCell>State</Table.HeadCell>
+                <Table.HeadCell>Share</Table.HeadCell>
                 <Table.HeadCell>
-                  <span className="sr-only">Edit</span>
+                  <span className="sr-only">Play</span>
                 </Table.HeadCell>
               </Table.Head>
               <Table.Body className="z-0">
@@ -48,6 +50,18 @@ export default function GameList({ games }: { games?: Game[] }) {
                         {Number(game.adaAmount) / 1000000}
                       </Table.Cell>
                       <Table.Cell>{game.state}</Table.Cell>
+                      <Table.Cell>
+                        <TwitterShareButton
+                          url={`https://zkmastermind.modulo-p.io/games/${game.id}`}
+                          title={`I'm looking for a challenger on ZK-Mastermind. Can you break the code? $ADA`}
+                          hashtags={["ZkMastermind", "Cardano", "ADA"]}
+                          related={["modp_"]}
+                        >
+                          <Button color="blue">
+                            <FaTwitter size={16} className="" />
+                          </Button>
+                        </TwitterShareButton>
+                      </Table.Cell>
                       <Table.Cell>
                         <Link
                           href={`/games/${game.id}`}

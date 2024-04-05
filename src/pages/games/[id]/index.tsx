@@ -13,10 +13,13 @@ import { MastermindDatum } from "@/services/mastermind";
 import { Game } from "@/types/game";
 import * as CSL from "@emurgo/cardano-serialization-lib-nodejs";
 import axios, { AxiosError } from "axios";
+import { Button } from "flowbite-react";
 import { GetServerSidePropsContext, InferGetServerSidePropsType } from "next";
 import Head from "next/head";
 import { useRouter } from "next/router";
 import { ReactElement, useEffect } from "react";
+import { FaTwitter } from "react-icons/fa";
+import { TwitterShareButton } from "react-share";
 
 export async function getServerSideProps({
   params,
@@ -139,7 +142,7 @@ export default function Game({
         <meta name="twitter:site" content="@modp_" />
         <meta
           name="twitter:description"
-          content={`${serverGame.codeMaster.nickname} is looking for a challenger. Can you break the code?`}
+          content={`${serverGame.codeMaster.nickname} is looking for a challenger. Can you break the code? $ADA #ZkMastermind`}
         />
         <meta
           name="twitter:image"
@@ -222,6 +225,21 @@ export default function Game({
                       game.{" "}
                     </p>
                     <ClueForm id={game.id} />
+                    <p>
+                      Searching for a challenger. You are the code master. Post
+                      on social media to find a challenger.
+                    </p>
+                    <TwitterShareButton
+                      url={`https://zkmastermind.modulo-p.io/games/${game.id}`}
+                      title={`I'm looking for a challenger on ZK-Mastermind. Can you break the code?`}
+                      hashtags={["ZkMastermind", "Cardano", "ADA"]}
+                      related={["modp_"]}
+                    >
+                      <Button color="blue">
+                        Share on Twitter{" "}
+                        <FaTwitter size={24} className="ms-2" />
+                      </Button>
+                    </TwitterShareButton>
                   </div>
                 )}
               {game && game.state == "STARTED" && currentGameRow && (
