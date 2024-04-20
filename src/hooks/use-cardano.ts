@@ -1,7 +1,7 @@
 import useHydraWallet from "@/hooks/use-hydra-wallet";
 import { Transaction } from "@meshsdk/core";
 import { useWallet } from "@meshsdk/react";
-import { useCallback, useState } from "react";
+import { useCallback } from "react";
 
 export default function useCardano() {
   const { wallet } = useWallet();
@@ -13,8 +13,7 @@ export default function useCardano() {
 
       tx.sendLovelace(
         {
-          address:
-            "addr_test1wz0c73j3czfd77gtg58jtm2dz8fz7yrxzylv7dc67kew5tqk4uqc9",
+          address: process.env.NEXT_PUBLIC_CARDANO_BRIDGE_ADDRESS!,
           datum: {
             value: hydraWalletAddress,
             inline: true,
