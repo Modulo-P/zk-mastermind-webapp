@@ -72,6 +72,17 @@ export default function ClueForm({ id }: ClueFormProps) {
             }
           />
         </div>
+        <div className="text-xs">
+          <p>TIP:</p>
+          <p>
+            <span className="font-bold">White pegs:</span> Number of pegs that
+            are the right color but in the wrong position.
+          </p>
+          <p>
+            <span className="font-bold">Black pegs:</span> Number of pegs that
+            are the right color and in the right position.
+          </p>
+        </div>
         {game && currentGameRow && (
           <div className="flex flex-row gap-4">
             <ClueButton
